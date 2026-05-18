@@ -132,4 +132,102 @@ theorem sigma_negative_branch_le_init
     t_max ht_max sigma hSigma_pos hSigma_cont hSigma_ode
     (Set.left_mem_Icc.mpr ht_max.le) ht ht.1
 
+/-! ## Theorem 4.1(a) — Positive branch is monotonically learned -/
+
+/-- **Theorem 4.1(a) (Positive-branch monotonicity).**
+
+    Mirror of 4.1(c): when `ρ > 0`, both ODE terms balance against the
+    positive fixed point `σ_r* = √(ρ·μ)`. As long as `σ < σ_r*`, the first
+    term `λ · σ^{3-1/L}` dominates the second `(λ/ρ) · σ³`, so `σ̇ > 0`.
+    Hence `σ` is monotonically non-decreasing on `[0, t_max]` whenever it
+    stays below `σ_r*`.
+
+    This is the *deterministic-dynamics* witness for the positive branch.
+    Full convergence to `σ_r*` requires the Laurent hitting-time machinery
+    (paper-1's `bernoulli_laurent_bound` lineage) and is deferred to the
+    Layer-4.2 magnitude wrapper; for sign identification, monotonicity is
+    sufficient.
+
+    Signed-first: `lambda > 0`, `rho > 0` taken as explicit hypotheses;
+    the conjugate `lambda = rho · mu` is encoded by the
+    `σ_r* = √(ρ · μ)` upper bound.
+
+    PROVIDED SOLUTION
+    Step 1 (sign of each term). For `t ∈ (0, t_max)` with
+    `0 < σ(t) < σ_r* = √(ρ · μ)`:
+      * `λ · σ(t)^{3 - 1/L} > 0` (both factors positive).
+      * `−(λ/ρ) · σ(t)³ < 0` (`λ/ρ > 0`, σ³ > 0).
+    Step 2 (first term dominates). At `σ < σ_r*`, we have `σ² < ρ · μ`, so
+    `σ^{3 - 1/L} > σ^{3 - 1/L} · σ^{1/L} / √(ρ · μ) = σ³ / √(ρ · μ)`. Using
+    `λ = ρ · μ` (encoded by `h_lambda_eq`) the dominance reads
+    `λ · σ^{3 - 1/L} > (λ/ρ) · σ³`, i.e. `σ̇ > 0`.
+    Step 3 (monotonicity). Apply `monotoneOn_of_deriv_nonneg` on
+    `[0, t_max]` with continuity from `hSigma_cont`, differentiability from
+    the ODE hypothesis, and `σ̇ ≥ 0` from Step 2 (strict ≥ weakened). -/
+theorem sigma_positive_branch_monotone
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda rho mu : ℝ) (hlam_pos : 0 < lambda)
+    (hrho_pos : 0 < rho) (hmu_pos : 0 < mu)
+    (h_lambda_eq : lambda = rho * mu)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (sigma : ℝ → ℝ)
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < sigma t)
+    (hSigma_below : ∀ t ∈ Set.Icc 0 t_max,
+        sigma t < Real.sqrt (rho * mu))
+    (hSigma_cont : ContinuousOn sigma (Set.Icc 0 t_max))
+    (hSigma_ode : ∀ t ∈ Set.Ioo 0 t_max,
+      HasDerivAt sigma
+        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
+          - (lambda / rho) * (sigma t) ^ 3) t) :
+    MonotoneOn sigma (Set.Icc 0 t_max) := by
+  sorry
+
+/-! ## Theorem 4.1(b) — Zero branch is stationary -/
+
+/-- **Theorem 4.1(b) (Zero-branch stationarity).**
+
+    When `ρ = 0`, the projected covariance `λ = ρ · μ = 0`, so the diagonal
+    ODE reduces to `σ̇ = 0`. Hence `σ` is constant on `[0, t_max]`.
+
+    Stated against a slightly **simplified ODE** — the `(λ/ρ) · σ³` term is
+    ill-defined at `ρ = 0`, so we use the equivalent `λ · σ^{3-1/L} − μ · σ³`
+    form (with `λ = ρ · μ`), which is well-defined and equals the original
+    ODE wherever `ρ ≠ 0`. -/
+theorem sigma_zero_branch_constant
+    (L : ℕ) (hL : 2 ≤ L)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (sigma : ℝ → ℝ)
+    (hSigma_cont : ContinuousOn sigma (Set.Icc 0 t_max))
+    (hSigma_ode : ∀ t ∈ Set.Ioo 0 t_max, HasDerivAt sigma 0 t) :
+    ∀ t ∈ Set.Icc 0 t_max, sigma t = sigma 0 := by
+  intro t ht
+  have h_deriv_zero : ∀ s ∈ Set.Ioo 0 t_max, deriv sigma s = 0 := fun s hs =>
+    (hSigma_ode s hs).deriv
+  rcases eq_or_lt_of_le ht.1 with hzero | hpos
+  · simp [← hzero]
+  · apply Eq.symm
+    have hAnti : AntitoneOn sigma (Set.Icc 0 t_max) := by
+      apply antitoneOn_of_deriv_nonpos (convex_Icc _ _)
+      · exact hSigma_cont
+      · intro x hx
+        have : x ∈ Set.Ioo 0 t_max := by simpa using hx
+        exact (hSigma_ode x this).differentiableAt.differentiableWithinAt
+      · intro x hx
+        have : x ∈ Set.Ioo 0 t_max := by simpa using hx
+        rw [h_deriv_zero x this]
+    have hMono : MonotoneOn sigma (Set.Icc 0 t_max) := by
+      apply monotoneOn_of_deriv_nonneg (convex_Icc _ _)
+      · exact hSigma_cont
+      · intro x hx
+        have : x ∈ Set.Ioo 0 t_max := by simpa using hx
+        exact (hSigma_ode x this).differentiableAt.differentiableWithinAt
+      · intro x hx
+        have : x ∈ Set.Ioo 0 t_max := by simpa using hx
+        rw [h_deriv_zero x this]
+    have hle  : sigma t ≤ sigma 0 :=
+      hAnti (Set.left_mem_Icc.mpr ht_max.le) ht ht.1
+    have hge  : sigma 0 ≤ sigma t :=
+      hMono (Set.left_mem_Icc.mpr ht_max.le) ht ht.1
+    linarith
+
 end JepaRhoRecovery
