@@ -1,0 +1,12 @@
+/.lake
+.env
+memory/
+literature/
+.DS_Store
+**/.DS_Store
+.claude/settings.local.json
+results/
+my_theorems/
+reports/
+requests/
+__pycache__/

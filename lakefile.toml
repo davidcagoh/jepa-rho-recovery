@@ -1,0 +1,20 @@
+name = "jepa-rho-recovery"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["JepaRhoRecovery"]
+packagesDir = "../.lean-packages"
+
+[leanOptions]
+pp.unicode.fun = true
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.28.0"
+git = "https://github.com/leanprover-community/mathlib4.git"
+
+[[lean_lib]]
+name = "JepaRhoRecovery"
