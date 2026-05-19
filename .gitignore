@@ -10,3 +10,4 @@ my_theorems/
 reports/
 requests/
 __pycache__/
+.aristotle-results/

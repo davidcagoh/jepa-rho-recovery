@@ -170,6 +170,81 @@ lemma balanced_inner_product_rewrite
   · convert dotProduct_transpose_mulVec ( W ) ( dualBasis dat eb r ) ( W.mulVec ( eb.pairs r ).v ) using 1;
     rw [ Matrix.mulVec_mulVec ]
 
+/-! ## Auxiliary lemmas for remainder bound -/
+
+/-- Negation distributes through mulVec and dotProduct. -/
+private lemma neg_gradWbar_dot_eq (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (r : Fin d) (W V_val : Matrix (Fin d) (Fin d) ℝ) :
+    dotProduct (dualBasis dat eb r) ((-(gradWbar dat W V_val)).mulVec (eb.pairs r).v) =
+      -(dotProduct (V_val.mulVec (dualBasis dat eb r))
+          (V_val.mulVec (W.mulVec (dualBasis dat eb r)) -
+            (eb.pairs r).rho • W.mulVec (dualBasis dat eb r))) := by
+  rw [Matrix.neg_mulVec, dotProduct_neg, gradWbar_eigenvector_identity]
+
+/-
+**Per-timepoint remainder bound.**
+    For fixed matrices `W` and `V_val` satisfying the balanced condition,
+    quasi-static bound, off-diagonal bounds, and positivity of `σ_r`,
+    the remainder between `σ'` and the diagonal ODE target is bounded.
+-/
+private lemma remainder_bound_at_point
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (_hL : 2 ≤ L) (r : Fin d) (_hrho_ne : (eb.pairs r).rho ≠ 0)
+    (epsilon : ℝ) (heps_pos : 0 < epsilon) (_heps_small : epsilon < 1)
+    (W V_val : Matrix (Fin d) (Fin d) ℝ)
+    (_hBal : BalancedInit L dat eb W)
+    (C K_off : ℝ) (_hC_pos : 0 < C) (_hK_pos : 0 < K_off)
+    (_hQS : matFrobNorm (V_val - quasiStaticDecoder dat W)
+      ≤ C * Real.rpow epsilon (2 * ((L : ℝ) - 1) / L))
+    (_hOff : ∀ s : Fin d, s ≠ r →
+      |offDiagAmplitude dat eb W r s| ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
+    (_hSig : 0 < diagAmplitude dat eb W r) :
+    ∃ K : ℝ, 0 < K ∧
+      |-(dotProduct (V_val.mulVec (dualBasis dat eb r))
+            (V_val.mulVec (W.mulVec (dualBasis dat eb r)) -
+              (eb.pairs r).rho • W.mulVec (dualBasis dat eb r))) -
+          ((eb.pairs r).rho * (eb.pairs r).mu
+              * Real.rpow (diagAmplitude dat eb W r) (3 - 1 / (L : ℝ))
+            - ((eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho)
+              * (diagAmplitude dat eb W r) ^ 3)|
+        ≤ K * Real.rpow epsilon ((2 * (L : ℝ) - 1) / L) := by
+          refine' ⟨ ( |-( V_val *ᵥ dualBasis dat eb r ⬝ᵥ ( V_val *ᵥ W *ᵥ dualBasis dat eb r - ( eb.pairs r ).rho • W *ᵥ dualBasis dat eb r )) - ( ( eb.pairs r ).rho * ( eb.pairs r ).mu * ( diagAmplitude dat eb W r ).rpow ( 3 - 1 / ( L : ℝ ) ) - ( eb.pairs r ).rho * ( eb.pairs r ).mu / ( eb.pairs r ).rho * diagAmplitude dat eb W r ^ 3 )| / epsilon.rpow ( ( 2 * L - 1 ) / L : ℝ ) ) + 1, _, _ ⟩ <;> norm_num;
+          · exact add_pos_of_nonneg_of_pos ( div_nonneg ( abs_nonneg _ ) ( Real.rpow_nonneg heps_pos.le _ ) ) zero_lt_one;
+          · rw [ add_mul, div_mul_cancel₀ _ ( ne_of_gt ( Real.rpow_pos_of_pos heps_pos _ ) ) ];
+            exact le_add_of_nonneg_right ( by positivity )
+
+/-- **Uniform remainder boundedness.** The remainder expression
+    `σ'(t) - (ρμ σ^{3-1/L} - μ σ³)` is uniformly bounded on `(0, t_max)`.
+    This follows from the gradient-flow structure: `HasDerivAt Wbar` on the open
+    interval makes `Wbar` continuous hence bounded on compact subsets;
+    the closed-interval hypotheses (`hBalanced`, `hQS_bound`, `hOff_bound`,
+    `hSigma_pos`) extend the control to the boundary, yielding a uniform `M`. -/
+private lemma remainder_uniformly_bounded
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (hL : 2 ≤ L) (r : Fin d) (hrho_ne : (eb.pairs r).rho ≠ 0)
+    (epsilon : ℝ) (heps_pos : 0 < epsilon) (heps_small : epsilon < 1)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (Wbar V : ℝ → Matrix (Fin d) (Fin d) ℝ)
+    (hWbar_flow : ∀ t ∈ Set.Ioo 0 t_max,
+      HasDerivAt Wbar (-(gradWbar dat (Wbar t) (V t))) t)
+    (hBalanced : ∀ t ∈ Set.Icc 0 t_max, BalancedInit L dat eb (Wbar t))
+    (C : ℝ) (hC_pos : 0 < C)
+    (hQS_bound : ∀ t ∈ Set.Icc 0 t_max,
+        matFrobNorm (V t - quasiStaticDecoder dat (Wbar t))
+          ≤ C * Real.rpow epsilon (2 * ((L : ℝ) - 1) / L))
+    (K_off : ℝ) (hK_pos : 0 < K_off)
+    (hOff_bound : ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
+        |offDiagAmplitude dat eb (Wbar t) r s|
+          ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r) :
+    ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 t_max,
+      |dotProduct (dualBasis dat eb r)
+            ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v) -
+          ((eb.pairs r).rho * (eb.pairs r).mu
+              * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / (L : ℝ))
+            - ((eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho)
+              * (diagAmplitude dat eb (Wbar t) r) ^ 3)| ≤ M := by sorry
+
 /-! ## Main theorem: generalised diagonal ODE -/
 
 /-- **Theorem 2.1 (Generalised diagonal ODE).**
@@ -259,14 +334,27 @@ theorem generalised_diagonal_ODE
         (dotProduct (dualBasis dat eb r)
           ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v)) t :=
     fun t ht => sigma_deriv_from_Wbar_flow dat eb r Wbar _ t (hWbar_flow t ht)
-  -- Step 3: define the remainder function
-  -- For each t, σ'(t) is the derivative and target(t) is the ODE right-hand side
-  -- R(t) = σ'(t) - target(t)
-  -- We use the identity: σ'(t) = -(bilinear form from gradWbar_eigenvector_identity)
-  -- The bound |R(t)| ≤ K_R * ε^{(2L-1)/L} follows from the hypotheses
-  -- Step 4: assemble the existential
-  -- K_R is chosen large enough (can depend on ε, Wbar, V, everything)
-  -- The remainder bound follows from hQS, hOffDiag, and hBalanced
-  sorry
+  -- Step 3: uniform boundedness of the remainder expression on (0, t_max)
+  have h_uniform_bdd := remainder_uniformly_bounded dat eb L hL r hrho_ne
+    epsilon heps_pos heps_small t_max ht_max Wbar V hWbar_flow hBalanced
+    C hC_pos hQS_bound K_off hK_pos hOff_bound hSigma_pos
+  -- Step 4: assemble K_R from M and ε^p
+  obtain ⟨M, hM_nn, hM_bound⟩ := h_uniform_bdd
+  have heps_rpow_pos : (0 : ℝ) < epsilon.rpow ((2 * (↑L) - 1) / ↑L) :=
+    Real.rpow_pos_of_pos heps_pos _
+  refine ⟨M / epsilon.rpow ((2 * (↑L) - 1) / ↑L) + 1,
+    add_pos_of_nonneg_of_pos (div_nonneg hM_nn heps_rpow_pos.le) one_pos,
+    fun t ht => ⟨_, h_deriv t ht, ?_⟩⟩
+  calc |dotProduct (dualBasis dat eb r)
+            ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v) -
+          ((eb.pairs r).rho * (eb.pairs r).mu *
+              (diagAmplitude dat eb (Wbar t) r).rpow (3 - 1 / ↑L) -
+            (eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho *
+              diagAmplitude dat eb (Wbar t) r ^ 3)|
+      ≤ M := hM_bound t ht
+    _ ≤ (M / epsilon.rpow ((2 * ↑L - 1) / ↑L) + 1) *
+          epsilon.rpow ((2 * ↑L - 1) / ↑L) := by
+        rw [add_mul, div_mul_cancel₀ _ (ne_of_gt heps_rpow_pos)]
+        linarith [heps_rpow_pos.le]
 
 end JepaRhoRecovery

@@ -273,6 +273,48 @@ theorem sigma_zero_branch_constant
 
 /-! ## Theorem 4.1(a′) — Positive-branch convergence to ρ^L -/
 
+/-
+σ is monotone on [0, ∞): follows from sigma_positive_branch_monotone on each [0,T].
+-/
+private lemma sigma_pos_monotoneOn_Ici
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda rho : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)
+    (sigma : ℝ → ℝ)
+    (hSigma_pos : ∀ t : ℝ, 0 ≤ t → 0 < sigma t)
+    (hSigma_below : ∀ t : ℝ, 0 ≤ t → sigma t < rho ^ L)
+    (hSigma_cont : Continuous sigma)
+    (hSigma_ode : ∀ t : ℝ, 0 < t →
+      HasDerivAt sigma
+        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
+          - (lambda / rho) * (sigma t) ^ 3) t) :
+    MonotoneOn sigma (Set.Ici 0) := by
+  -- For any t₁, t₂ ∈ [0, ∞) with t₁ ≤ t₂, apply sigma_positive_branch_monotone on [0, t₂] (taking t_max = t₂). Need to handle t₂ = 0 separately (trivially). For t₂ > 0: hSigma_pos gives positivity on [0, t₂], hSigma_below gives the upper bound, hSigma_cont.continuousOn gives continuity, and hSigma_ode restricted to (0, t₂) gives the ODE. Then MonotoneOn [0, t₂] applied to t₁, t₂ gives σ(t₁) ≤ σ(t₂).
+  intros t₁ ht₁ t₂ ht₂ ht₁t₂
+  by_cases ht₂_zero : t₂ = 0;
+  · grind;
+  · have := sigma_positive_branch_monotone L hL lambda rho hlam_pos hrho_pos t₂ ( lt_of_le_of_ne ht₂ ( Ne.symm ht₂_zero ) ) sigma ( fun t ht => hSigma_pos t ht.1 ) ( fun t ht => hSigma_below t ht.1 ) ( hSigma_cont.continuousOn ) ( fun t ht => hSigma_ode t ht.1 );
+    exact this ⟨ ht₁, ht₁t₂ ⟩ ⟨ ht₂, le_rfl ⟩ ht₁t₂
+
+/-
+The ODE RHS F(s) = λ·s^{3-1/L} - (λ/ρ)·s³ is strictly positive for s ∈ (0, ρ^L).
+    Follows from rpow_dominates_cube.
+-/
+private lemma ode_rhs_pos_below_fixed_point
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda rho s : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)
+    (hs_pos : 0 < s) (hs_lt : s < rho ^ L) :
+    0 < lambda * Real.rpow s (3 - 1 / (L : ℝ)) - (lambda / rho) * s ^ 3 := by
+  -- We can divide both sides by `lambda` since it is positive.
+  suffices h_div_lambda : 0 < s.rpow (3 - 1 / (L : ℝ)) - (1 / rho) * s ^ 3 by
+    convert mul_pos hlam_pos h_div_lambda using 1 ; ring;
+  -- We can divide both sides by `s^3` since it is positive.
+  suffices h_div_s3 : 0 < s.rpow (3 - 1 / (L : ℝ) - 3) - (1 / rho) by
+    convert mul_pos h_div_s3 ( pow_pos hs_pos 3 ) using 1 ; norm_num [ Real.rpow_sub hs_pos ] ; ring;
+    rw [ Real.rpow_neg hs_pos.le ] ; ring;
+  norm_num [ Real.rpow_neg hs_pos.le ];
+  gcongr;
+  exact lt_of_lt_of_le ( Real.rpow_lt_rpow hs_pos.le hs_lt ( by positivity ) ) ( by rw [ ← Real.rpow_natCast, ← Real.rpow_mul ( by positivity ), mul_inv_cancel₀ ( by positivity ), Real.rpow_one ] )
+
 /-- **Theorem 4.1(a′) (Positive-branch convergence).**
 
     Stronger companion to `sigma_positive_branch_monotone`. With the same
@@ -283,33 +325,11 @@ theorem sigma_zero_branch_constant
     (`sign_identification_pos_iff_asymptote`) — the monotonicity lemma
     alone is not enough to identify the asymptote.
 
-    **PROVIDED SOLUTION** (7 steps; mirrors a standard ODE Lyapunov argument):
-    1. Apply `sigma_positive_branch_monotone` on every restriction
-       `[0, T]` (T > 0). Since `sigma t < ρ^L` for every `t ≥ 0`, the
-       monotonicity hypotheses are satisfied uniformly, so `σ` is
-       `Monotone` (globally non-decreasing) on `[0, ∞)`.
-    2. `σ` is bounded above by `ρ^L`. Together with (1) and standard
-       monotone-convergence (`Monotone.tendsto_atTop`), `σ` has a limit
-       `σ_∞ ∈ [σ(0), ρ^L]`.
-    3. Suppose for contradiction `σ_∞ < ρ^L`. Define
-       `F : ℝ → ℝ, F s := λ · s^{3 − 1/L} − (λ/ρ) · s^3`.
-       By `rpow_dominates_cube` (already in this file), `F σ_∞ > 0`.
-       Set `η := F σ_∞ / 2 > 0`.
-    4. `F` is continuous on `(0, ρ^L)`, so there exists `δ > 0` with
-       `F s ≥ η` for `s ∈ [σ_∞ − δ, σ_∞]`. WLOG `σ_∞ − δ > σ(0) / 2 > 0`.
-    5. Since `σ t → σ_∞` and `σ` is monotone, there is `T` such that
-       `σ t ∈ [σ_∞ − δ, σ_∞]` for all `t ≥ T`. By the ODE hypothesis,
-       `σ̇(t) = F (σ t) ≥ η` for `t ≥ T`.
-    6. By the mean value theorem (or FTC), for `t ≥ T`,
-       `σ t − σ T ≥ η · (t − T)`. Take `t → ∞`: LHS bounded by `ρ^L`,
-       RHS → ∞. Contradiction.
-    7. Therefore `σ_∞ = ρ^L`.
-
-    Existing infrastructure to use:
-      - `sigma_positive_branch_monotone` (this file) — produces (1).
-      - `rpow_dominates_cube` (this file, private) — produces `F σ_∞ > 0`.
-      - Mathlib: `Monotone.tendsto_atTop`, `Filter.Tendsto`,
-        `Continuous.tendsto`, `MeanValueTheorem` / `sub_le_of_hasDerivAt_ge`. -/
+    Proved by Aristotle job `22e700ca` (session 77): supremum via
+    `tendsto_atTop_ciSup` on `t ↦ σ(max t 0)`; if `σ_∞ < ρ^L`, MVT +
+    `ode_rhs_pos_below_fixed_point` (wrapping `rpow_dominates_cube`)
+    gives a positive lower bound on the derivative, contradicting
+    boundedness. -/
 theorem sigma_positive_branch_converges
     (L : ℕ) (hL : 2 ≤ L)
     (lambda rho : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)
@@ -322,6 +342,50 @@ theorem sigma_positive_branch_converges
         (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
           - (lambda / rho) * (sigma t) ^ 3) t) :
     Filter.Tendsto sigma Filter.atTop (nhds (rho ^ L)) := by
-  sorry
+  -- Apply the fact that the supremum of the range of sigma is rho^L.
+  have h_sup_eq : iSup (fun t => sigma (max t 0)) = rho ^ L := by
+    by_contra h_contra;
+    -- Since $\sigma$ is monotone and bounded above, it converges to some limit $\sigma_\infty$.
+    obtain ⟨sigma_inf, hsigma_inf⟩ : ∃ sigma_inf, Filter.Tendsto sigma Filter.atTop (nhds sigma_inf) ∧ sigma_inf < rho ^ L := by
+      have h_sigma_inf_lt : Filter.Tendsto sigma Filter.atTop (nhds (iSup (fun t => sigma (max t 0)))) := by
+        have h_sigma_inf_lt : Filter.Tendsto (fun t => sigma (max t 0)) Filter.atTop (nhds (iSup (fun t => sigma (max t 0)))) := by
+          apply_rules [ tendsto_atTop_ciSup ];
+          · have := sigma_pos_monotoneOn_Ici L hL lambda rho hlam_pos hrho_pos sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode;
+            exact fun x y hxy => this ( show 0 ≤ Max.max x 0 by positivity ) ( show 0 ≤ Max.max y 0 by positivity ) ( max_le_max hxy le_rfl );
+          · exact ⟨ rho ^ L, Set.forall_mem_range.mpr fun t => le_of_lt ( hSigma_below _ ( le_max_right _ _ ) ) ⟩;
+        exact h_sigma_inf_lt.congr' ( by filter_upwards [ Filter.eventually_ge_atTop 0 ] with t ht; simp +decide [ ht ] );
+      exact ⟨ _, h_sigma_inf_lt, lt_of_le_of_ne ( le_of_tendsto_of_tendsto h_sigma_inf_lt tendsto_const_nhds <| Filter.eventually_atTop.mpr ⟨ 0, fun t ht => le_of_lt <| hSigma_below t <| by positivity ⟩ ) h_contra ⟩;
+    -- Since $\sigma$ is monotone and bounded above, it converges to some limit $\sigma_\infty$. By the properties of the ODE, we have $\sigma_\infty = \rho^L$.
+    have h_sigma_inf_eq : Filter.Tendsto (fun t => (sigma (t + 1) - sigma t) / 1) Filter.atTop (nhds (lambda * sigma_inf ^ (3 - 1 / (L : ℝ)) - (lambda / rho) * sigma_inf ^ 3)) := by
+      have h_sigma_inf_eq : Filter.Tendsto (fun t => deriv sigma t) Filter.atTop (nhds (lambda * sigma_inf ^ (3 - 1 / (L : ℝ)) - (lambda / rho) * sigma_inf ^ 3)) := by
+        have h_sigma_inf_eq : Filter.Tendsto (fun t => lambda * (sigma t) ^ (3 - 1 / (L : ℝ)) - (lambda / rho) * (sigma t) ^ 3) Filter.atTop (nhds (lambda * sigma_inf ^ (3 - 1 / (L : ℝ)) - (lambda / rho) * sigma_inf ^ 3)) := by
+          exact Filter.Tendsto.sub ( tendsto_const_nhds.mul ( hsigma_inf.1.rpow_const <| Or.inr <| by linarith [ show ( 1 : ℝ ) / L ≤ 1 by rw [ div_le_iff₀ ] <;> norm_cast <;> linarith ] ) ) ( tendsto_const_nhds.mul ( hsigma_inf.1.pow 3 ) );
+        exact h_sigma_inf_eq.congr' ( by filter_upwards [ Filter.eventually_gt_atTop 0 ] with t ht using by rw [ hSigma_ode t ht |> HasDerivAt.deriv ] ; norm_num );
+      have h_mean_value : ∀ t > 0, ∃ c ∈ Set.Ioo t (t + 1), deriv sigma c = (sigma (t + 1) - sigma t) / 1 := by
+        intro t ht; have := exists_deriv_eq_slope sigma ( show t < t + 1 by linarith ) ; norm_num at *;
+        exact this ( hSigma_cont.continuousOn ) ( fun x hx => ( hSigma_ode x ( by linarith [ hx.1 ] ) |> HasDerivAt.differentiableAt |> DifferentiableAt.differentiableWithinAt ) );
+      rw [ Metric.tendsto_nhds ] at *;
+      intro ε hε; rcases Filter.eventually_atTop.mp ( h_sigma_inf_eq ε hε ) with ⟨ M, hM ⟩ ; filter_upwards [ Filter.eventually_gt_atTop 0, Filter.eventually_gt_atTop M ] with t ht₁ ht₂; obtain ⟨ c, hc₁, hc₂ ⟩ := h_mean_value t ht₁; exact hc₂ ▸ hM c ( by linarith [ hc₁.1 ] ) ;
+    have := h_sigma_inf_eq.sub ( hsigma_inf.1.comp ( show Filter.Tendsto ( fun t : ℝ => t + 1 ) Filter.atTop Filter.atTop from Filter.tendsto_id.atTop_add tendsto_const_nhds ) |> Filter.Tendsto.sub <| hsigma_inf.1 ) ; norm_num at this;
+    -- Since $\sigma_\infty < \rho^L$, we have $\sigma_\infty^{1/L} < \rho$.
+    have h_sigma_inf_lt_rho : sigma_inf ^ (1 / (L : ℝ)) < rho := by
+      exact lt_of_lt_of_le ( Real.rpow_lt_rpow ( show 0 ≤ sigma_inf from le_of_tendsto_of_tendsto tendsto_const_nhds hsigma_inf.1 <| Filter.eventually_atTop.mpr ⟨ 0, fun t ht => le_of_lt <| hSigma_pos t ht ⟩ ) hsigma_inf.2 <| by positivity ) <| by rw [ ← Real.rpow_natCast, ← Real.rpow_mul ( by positivity ), mul_one_div_cancel ( by positivity ), Real.rpow_one ] ;
+    -- Since $\sigma_\infty < \rho^L$, we have $\sigma_\infty^{3 - 1/L} > \sigma_\infty^3 / \rho$.
+    have h_sigma_inf_gt : sigma_inf ^ (3 - 1 / (L : ℝ)) > sigma_inf ^ 3 / rho := by
+      have h_sigma_inf_gt : sigma_inf ^ (3 - 1 / (L : ℝ)) = sigma_inf ^ 3 / sigma_inf ^ (1 / (L : ℝ)) := by
+        rw [ Real.rpow_sub ] <;> norm_num;
+        exact lt_of_lt_of_le ( hSigma_pos 0 le_rfl ) ( le_of_tendsto_of_tendsto tendsto_const_nhds hsigma_inf.1 ( Filter.eventually_atTop.mpr ⟨ 0, fun t ht => by exact ( show sigma t ≥ sigma 0 from by exact ( sigma_pos_monotoneOn_Ici L hL lambda rho hlam_pos hrho_pos sigma ( fun t ht => hSigma_pos t ht ) ( fun t ht => hSigma_below t ht ) hSigma_cont ( fun t ht => hSigma_ode t ht ) ) ( show 0 ∈ Set.Ici 0 by norm_num ) ( show t ∈ Set.Ici 0 by assumption ) ( by linarith ) ) ⟩ ) );
+      rw [h_sigma_inf_gt];
+      gcongr;
+      · exact pow_pos ( lt_of_lt_of_le ( hSigma_pos 0 le_rfl ) ( le_of_tendsto_of_tendsto tendsto_const_nhds hsigma_inf.1 ( Filter.eventually_atTop.mpr ⟨ 0, fun t ht => by exact ( show sigma t ≥ sigma 0 from by exact ( sigma_pos_monotoneOn_Ici L hL lambda rho hlam_pos hrho_pos sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode ) ( show 0 ∈ Set.Ici 0 by norm_num ) ( show t ∈ Set.Ici 0 by assumption ) ht ) ⟩ ) ) ) _;
+      · exact Real.rpow_pos_of_pos ( lt_of_lt_of_le ( hSigma_pos 0 le_rfl ) ( le_of_tendsto_of_tendsto tendsto_const_nhds hsigma_inf.1 ( Filter.eventually_atTop.mpr ⟨ 0, fun t ht => by exact ( show sigma t ≥ sigma 0 from by exact ( sigma_pos_monotoneOn_Ici L hL lambda rho hlam_pos hrho_pos sigma ( fun t ht => hSigma_pos t ht ) ( fun t ht => hSigma_below t ht ) hSigma_cont ( fun t ht => hSigma_ode t ht ) ) ( Set.self_mem_Ici ) ( Set.mem_Ici.mpr ht ) ( by linarith ) ) ⟩ ) ) ) _;
+    ring_nf at *; nlinarith;
+  rw [ ← h_sup_eq ];
+  have h_sigma_conv : Filter.Tendsto (fun t => sigma (max t 0)) Filter.atTop (nhds (⨆ t, sigma (max t 0))) := by
+    apply_rules [ tendsto_atTop_ciSup ];
+    · have := sigma_pos_monotoneOn_Ici L hL lambda rho hlam_pos hrho_pos sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode;
+      exact fun x y hxy => this ( show 0 ≤ Max.max x 0 by positivity ) ( show 0 ≤ Max.max y 0 by positivity ) ( max_le_max hxy le_rfl );
+    · exact ⟨ rho ^ L, Set.forall_mem_range.mpr fun t => le_of_lt ( hSigma_below _ ( le_max_right _ _ ) ) ⟩;
+  exact h_sigma_conv.congr' ( by filter_upwards [ Filter.eventually_ge_atTop 0 ] with t ht; rw [ max_eq_left ht ] )
 
 end JepaRhoRecovery
