@@ -94,7 +94,7 @@ Finite intersection of "eventually for small ε" statements over a
     product of two finsets. For each pair `(s, r) ∈ S₁ × S₂`, given
     `ε₀(s,r) > 0`, the minimum over the finite product is still positive.
 -/
-private lemma finset_forall_eps₂ {ι₁ ι₂ : Type*}
+lemma finset_forall_eps₂ {ι₁ ι₂ : Type*}
     (S₁ : Finset ι₁) (S₂ : Finset ι₂) (Q : ι₁ → ι₂ → ℝ → Prop)
     (h : ∀ s ∈ S₁, ∀ r ∈ S₂, ∃ ε₀ : ℝ, 0 < ε₀ ∧ ∀ ε : ℝ, 0 < ε → ε < ε₀ → Q s r ε) :
     ∃ eps_max : ℝ, 0 < eps_max ∧ ∀ ε : ℝ, 0 < ε → ε < eps_max →
