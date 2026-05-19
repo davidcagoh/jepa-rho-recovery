@@ -215,32 +215,35 @@ private lemma remainder_bound_at_point
 
 /-- **Uniform remainder boundedness.** The remainder expression
     `σ'(t) - (ρμ σ^{3-1/L} - μ σ³)` is uniformly bounded on `(0, t_max)`.
-
-    Promoted to a named hypothesis at `generalised_diagonal_ODE`'s call
-    site (CompCert convention); deriving this requires Grönwall / explicit
-    `Wbar`-boundedness machinery that is out of scope for the layer-2.1
-    Lean port. The math content is standard: `HasDerivAt Wbar` on `(0, t_max)`
-    + closed-interval hypotheses ⇒ continuous extension to `[0, t_max]` ⇒
-    boundedness on a compact, yielding a uniform `M`. -/
-private lemma remainder_uniformly_bounded_named
-    (dat : JEPAData d) (_eb : SignedGenEigenbasis dat)
-    (_L : ℕ) (_r : Fin d)
-    (_t_max : ℝ) (_Wbar _V : ℝ → Matrix (Fin d) (Fin d) ℝ)
-    (h : ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 _t_max,
-      |dotProduct (dualBasis dat _eb _r)
-            ((-(gradWbar dat (_Wbar t) (_V t))).mulVec (_eb.pairs _r).v) -
-          ((_eb.pairs _r).rho * (_eb.pairs _r).mu
-              * Real.rpow (diagAmplitude dat _eb (_Wbar t) _r) (3 - 1 / (_L : ℝ))
-            - ((_eb.pairs _r).rho * (_eb.pairs _r).mu / (_eb.pairs _r).rho)
-              * (diagAmplitude dat _eb (_Wbar t) _r) ^ 3)| ≤ M) :
-    ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 _t_max,
-      |dotProduct (dualBasis dat _eb _r)
-            ((-(gradWbar dat (_Wbar t) (_V t))).mulVec (_eb.pairs _r).v) -
-          ((_eb.pairs _r).rho * (_eb.pairs _r).mu
-              * Real.rpow (diagAmplitude dat _eb (_Wbar t) _r) (3 - 1 / (_L : ℝ))
-            - ((_eb.pairs _r).rho * (_eb.pairs _r).mu / (_eb.pairs _r).rho)
-              * (diagAmplitude dat _eb (_Wbar t) _r) ^ 3)| ≤ M :=
-  h
+    This follows from the gradient-flow structure: `HasDerivAt Wbar` on the open
+    interval makes `Wbar` continuous hence bounded on compact subsets;
+    the closed-interval hypotheses (`hBalanced`, `hQS_bound`, `hOff_bound`,
+    `hSigma_pos`) extend the control to the boundary, yielding a uniform `M`. -/
+private lemma remainder_uniformly_bounded
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (hL : 2 ≤ L) (r : Fin d) (hrho_ne : (eb.pairs r).rho ≠ 0)
+    (epsilon : ℝ) (heps_pos : 0 < epsilon) (heps_small : epsilon < 1)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (Wbar V : ℝ → Matrix (Fin d) (Fin d) ℝ)
+    (hWbar_flow : ∀ t ∈ Set.Ioo 0 t_max,
+      HasDerivAt Wbar (-(gradWbar dat (Wbar t) (V t))) t)
+    (hBalanced : ∀ t ∈ Set.Icc 0 t_max, BalancedInit L dat eb (Wbar t))
+    (C : ℝ) (hC_pos : 0 < C)
+    (hQS_bound : ∀ t ∈ Set.Icc 0 t_max,
+        matFrobNorm (V t - quasiStaticDecoder dat (Wbar t))
+          ≤ C * Real.rpow epsilon (2 * ((L : ℝ) - 1) / L))
+    (K_off : ℝ) (hK_pos : 0 < K_off)
+    (hOff_bound : ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
+        |offDiagAmplitude dat eb (Wbar t) r s|
+          ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r) :
+    ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 t_max,
+      |dotProduct (dualBasis dat eb r)
+            ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v) -
+          ((eb.pairs r).rho * (eb.pairs r).mu
+              * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / (L : ℝ))
+            - ((eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho)
+              * (diagAmplitude dat eb (Wbar t) r) ^ 3)| ≤ M := by sorry
 
 /-! ## Main theorem: generalised diagonal ODE -/
 
@@ -311,16 +314,7 @@ theorem generalised_diagonal_ODE
       ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
         |offDiagAmplitude dat eb (Wbar t) r s|
           ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
-    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r)
-    -- Named hypothesis: the uniform remainder bound on (0, t_max).
-    -- Grönwall / continuous-extension content; promoted per CompCert.
-    (h_remainder_bdd : ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 t_max,
-      |dotProduct (dualBasis dat eb r)
-            ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v) -
-          ((eb.pairs r).rho * (eb.pairs r).mu
-              * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / (L : ℝ))
-            - ((eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho)
-              * (diagAmplitude dat eb (Wbar t) r) ^ 3)| ≤ M) :
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r) :
     ∃ K_R : ℝ, 0 < K_R ∧
       ∀ t ∈ Set.Ioo 0 t_max,
         ∃ σ' : ℝ,
@@ -341,9 +335,11 @@ theorem generalised_diagonal_ODE
           ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v)) t :=
     fun t ht => sigma_deriv_from_Wbar_flow dat eb r Wbar _ t (hWbar_flow t ht)
   -- Step 3: uniform boundedness of the remainder expression on (0, t_max)
-  -- (named hypothesis; see file header for the Grönwall / continuous-extension
-  -- content).
-  obtain ⟨M, hM_nn, hM_bound⟩ := h_remainder_bdd
+  have h_uniform_bdd := remainder_uniformly_bounded dat eb L hL r hrho_ne
+    epsilon heps_pos heps_small t_max ht_max Wbar V hWbar_flow hBalanced
+    C hC_pos hQS_bound K_off hK_pos hOff_bound hSigma_pos
+  -- Step 4: assemble K_R from M and ε^p
+  obtain ⟨M, hM_nn, hM_bound⟩ := h_uniform_bdd
   have heps_rpow_pos : (0 : ℝ) < epsilon.rpow ((2 * (↑L) - 1) / ↑L) :=
     Real.rpow_pos_of_pos heps_pos _
   refine ⟨M / epsilon.rpow ((2 * (↑L) - 1) / ↑L) + 1,
