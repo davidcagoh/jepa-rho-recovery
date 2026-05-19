@@ -30,48 +30,55 @@ variable {d : ℕ}
 
 /-- **Theorem 3.1 (Sample-covariance perturbation of ρ_r*).**
 
-    If the sample covariances `(Σ̂ˣˣ, Σ̂ʸˣ)` satisfy operator-norm
-    concentration
+    Restated (v2, session 78 — vacuity fix). Previous form
+    `∃ rho_hat, ∀ r, |rho_hat r − ρ_r*| ≤ C·δ` was trivially satisfied by
+    `rho_hat := (eb.pairs ·).rho` (Aristotle `e71b355e` produced exactly
+    that degenerate witness). Fix: take `rho_hat` as an **input** bound to
+    the sample matrices via the generalised eigenproblem hypothesis
+    `h_sample_eigen`; conclude per-sample-eigenvalue closeness to *some*
+    population eigenvalue (Weyl).
 
-        ‖Σ̂ˣˣ − Σˣˣ‖_op ≤ δ_x,  ‖Σ̂ʸˣ − Σʸˣ‖_op ≤ δ_y,
+    Given sample matrices `(Σ̂ˣˣ, Σ̂ʸˣ)` with operator-norm concentration
+    `‖Σ̂ˣˣ − Σˣˣ‖_F ≤ δ_x`, `‖Σ̂ʸˣ − Σʸˣ‖_F ≤ δ_y`, and a candidate
+    generalised eigenpair `(rho_hat r, v_hat r)` of the SAMPLE pair
+    (i.e. `Σ̂ʸˣ v̂_r = ρ̂_r · Σ̂ˣˣ v̂_r` with `v̂_r ≠ 0`), there exists a
+    `dat`-dependent constant `C > 0` such that each sample eigenvalue
+    `ρ̂_r` lies within `C · (δ_x + δ_y)` of some population eigenvalue.
 
-    then for each `r : Fin d` there exists a perturbation
-    `Δρ_r = ρ̂_r − ρ_r*` bounded by
+    PROVIDED SOLUTION (3 steps; see request `11_sample_eigenvalue_perturbation_v2.md`)
+    Step 1. Reduce both pairs to symmetric eigenproblems via
+    `w = (Σˣˣ)^{1/2} v`. Define `M = (Σˣˣ)^{-1/2} Σʸˣ (Σˣˣ)^{-1/2}` and
+    `M̂ = (Σ̂ˣˣ)^{-1/2} Σ̂ʸˣ (Σ̂ˣˣ)^{-1/2}`.
+    Step 2. Bound `‖M̂ − M‖_op` by `O(‖Σˣˣ⁻¹‖² · (‖Σʸˣ‖_op · δ_x + δ_y))`
+    via product-rule expansion on matrix square-root / inverse.
+    Step 3. Apply Weyl: each eigenvalue of `M̂` is within `‖M̂ − M‖_op`
+    of some eigenvalue of `M`. Combine with `h_sample_eigen` to translate
+    back to the generalised problem.
 
-        |Δρ_r| ≤ C(dat, eb) · (δ_x + δ_y),
-
-    where `C(dat, eb)` is a constant depending only on the population
-    spectrum (specifically the inverse-gap `1 / min_{s ≠ r} |ρ_r* − ρ_s*|`
-    and the conditioning `‖Σˣˣ⁻¹‖`). The constant is `ε`-independent.
-
-    Stated as an existential over the sample eigenpair `(v_hat, rho_hat)`;
-    the concrete construction is the generalised Rayleigh quotient of
-    `(Σ̂ʸˣ, Σ̂ˣˣ)`, but we abstract over it to keep the statement
-    Mathlib-friendly.
-
-    PROVIDED SOLUTION
-    Step 1. The generalised eigenvalue problem `Σʸˣ v = ρ Σˣˣ v` is
-    equivalent to the standard eigenvalue problem
-    `(Σˣˣ)^{-1/2} Σʸˣ (Σˣˣ)^{-1/2} w = ρ w` after the change of basis
-    `w = (Σˣˣ)^{1/2} v`.
-    Step 2. Apply Davis–Kahan / Weyl's inequality to the symmetric matrix
-    `M = (Σˣˣ)^{-1/2} Σʸˣ (Σˣˣ)^{-1/2}` and its sample analogue. Operator-
-    norm perturbation `‖M̂ − M‖_op` is bounded by
-    `O(‖Σˣˣ⁻¹‖ · (δ_x · ‖Σʸˣ‖_op + δ_y))` via product-rule expansion.
-    Step 3. Weyl bounds `|ρ̂_r − ρ_r*|` by `‖M̂ − M‖_op` for each `r`.
-    Set `C = O(‖Σˣˣ⁻¹‖ · ‖Σʸˣ‖_op + ‖Σˣˣ⁻¹‖)`.
+    Set `C := O(‖Σˣˣ⁻¹‖² · (‖Σʸˣ‖_op + 1))`.
 -/
 theorem sample_eigenvalue_perturbation
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (SigmaXX_hat SigmaYX_hat : Matrix (Fin d) (Fin d) ℝ)
     (delta_x delta_y : ℝ) (hδx_nn : 0 ≤ delta_x) (hδy_nn : 0 ≤ delta_y)
-    -- Operator-norm concentration (taken as hypothesis; produced by
+    -- Frobenius-norm concentration (taken as hypothesis; produced by
     -- sub-Gaussian / sub-exponential matrix Bernstein, out of scope here).
     (h_conc_x : matFrobNorm (SigmaXX_hat - dat.SigmaXX) ≤ delta_x)
-    (h_conc_y : matFrobNorm (SigmaYX_hat - dat.SigmaYX) ≤ delta_y) :
+    (h_conc_y : matFrobNorm (SigmaYX_hat - dat.SigmaYX) ≤ delta_y)
+    -- Sample generalised eigenpair: supplied externally, MUST satisfy the
+    -- generalised eigenproblem against the SAMPLE covariances. This is the
+    -- vacuity fix: `rho_hat := population` is no longer admissible because
+    -- `h_sample_eigen` would then constrain `Σ̂ʸˣ v = ρ_r* Σ̂ˣˣ v`, which
+    -- is false unless `Σ̂ = Σ`.
+    (rho_hat : Fin d → ℝ)
+    (v_hat   : Fin d → EuclideanSpace ℝ (Fin d))
+    (h_v_hat_nonzero  : ∀ r, v_hat r ≠ 0)
+    (h_sample_eigen   : ∀ r,
+        SigmaYX_hat *ᵥ v_hat r = (rho_hat r) • (SigmaXX_hat *ᵥ v_hat r)) :
+    -- Per-sample-eigenvalue Weyl closeness to SOME population eigenvalue.
     ∃ C : ℝ, 0 < C ∧
-      ∃ rho_hat : Fin d → ℝ,
-        ∀ r : Fin d, |rho_hat r - (eb.pairs r).rho| ≤ C * (delta_x + delta_y) := by
+      ∀ r : Fin d, ∃ s : Fin d,
+        |rho_hat r - (eb.pairs s).rho| ≤ C * (delta_x + delta_y) := by
   sorry
 
 end JepaRhoRecovery
