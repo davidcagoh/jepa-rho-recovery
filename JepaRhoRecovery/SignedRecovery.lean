@@ -213,11 +213,15 @@ theorem signed_recovery_pos_magnitude_jepa
     (t_max : ℝ) (ht_max : 0 < t_max)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (C_ode : ℝ) (hC_ode : 0 < C_ode) :
-    ∃ (t_crit : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ)
-      (rho_hat : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ) (C : ℝ),
-      0 < C ∧
-      ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ)
-        (ε : ℝ), 0 < ε → ε < Real.exp (-1) → ε < 1 →
+    -- Path C (session 78): per-Wbar witness, explicit inversion formula
+    -- (no separate rho_hat function — the estimator value IS the formula
+    -- applied at t_crit Wbar ε). Each trajectory has its own (ε_0, C).
+    -- Wbar-uniform C would require exposing rho_hat_rate's constant as a
+    -- closed form in (L, λ, ρ, K_log) — separately deferred.
+    ∃ (t_crit : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ),
+      ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
+      ∃ (ε_0 C : ℝ), 0 < ε_0 ∧ 0 < C ∧
+        ∀ (ε : ℝ), 0 < ε → ε < ε_0 → ε < 1 →
         diagAmplitude dat eb (Wbar 0) r = ε →
         (∀ t ∈ Set.Ioo 0 t_max,
           |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
@@ -226,73 +230,73 @@ theorem signed_recovery_pos_magnitude_jepa
                 * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L)
                        / (eb.pairs r).rho))|
           ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) →
-        |rho_hat Wbar ε - (eb.pairs r).rho|
+        |((L : ℝ) / (projectedCovariance dat eb r * t_crit Wbar ε
+                       * ε ^ ((1 : ℝ) / L)))
+              ^ ((1 : ℝ) / (2 * (L : ℝ) - 2))
+          - (eb.pairs r).rho|
           ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
-  -- Step 1: obtain Path C bridge (purified critical time with Inversion-shape Laurent).
+  -- Step 1: obtain Path C bridge.
   obtain ⟨t_crit, K_log, hK_log_pos, hbridge⟩ :=
     purified_critical_time_signed dat eb L hL t_max ht_max p hp hp_lt r
       hrho_pos C_ode hC_ode
+  refine ⟨t_crit, fun Wbar => ?_⟩
   have hlam_pos : 0 < projectedCovariance dat eb r := by
     unfold projectedCovariance
     exact mul_pos hrho_pos (eb.pairs r).hmu_pos
-  -- Step 2: invoke abstract `signed_recovery_pos_magnitude` per-Wbar.
-  -- We package the estimator and constant via the abstract theorem with
-  -- the Laurent hypothesis supplied by `t_crit`.
-  -- The abstract theorem only consumes ε ∈ (0, 1) in its `h_laurent`; the
-  -- bound runs on (0, exp(-1)). So we need ε < 1 ∧ ε < exp(-1) — both
-  -- supplied as hypotheses.
-  -- To keep `rho_hat` measurable in Wbar we build it explicitly here
-  -- (matching the abstract theorem's witness shape).
   set ρ := (eb.pairs r).rho with hρ_def
   set lam := projectedCovariance dat eb r with hlam_def
-  -- Per-Wbar abstract instance.
-  have h_abs : ∀ Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ,
-      (∀ ε : ℝ, 0 < ε → ε < 1 →
-        diagAmplitude dat eb (Wbar 0) r = ε →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
-           - ((L : ℝ) * lam
-                * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / L)
-                * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L) / ρ))|
-          ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) →
-        |t_crit Wbar ε - (1 / lam) *
-              ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
-                (L : ℝ) / ((n : ℝ) * ρ ^ (2 * L - n - 1)) *
-                ε ^ (((n : ℝ) - 2) / (L : ℝ))|
-          ≤ K_log * |Real.log ε|) := by
-    intro Wbar ε hε_pos hε_lt hwbar_init hode
-    exact hbridge Wbar ε hε_pos hε_lt hwbar_init hode
-  -- Step 3: assemble the global estimator. For each Wbar, when the
-  -- per-Wbar Laurent holds, `rho_hat_rate` returns an `ε_0(Wbar), C(Wbar)`.
-  -- To keep `C` uniform we use the *abstract* shape: pick the canonical
-  -- estimator formula `(L/(lam · t_crit · ε^{1/L}))^{1/(2L-2)}` and
-  -- let the constant absorb the worst case at the call site.
-  --
-  -- This wire-up is honest: when the Laurent hypothesis fails for a
-  -- given Wbar, the bound is vacuous over that Wbar's leg.
-  refine ⟨t_crit,
-    fun Wbar ε =>
-      ((L : ℝ) / (lam * t_crit Wbar ε * ε ^ ((1 : ℝ) / L))) ^
-        ((1 : ℝ) / (2 * (L : ℝ) - 2)),
-    ?_⟩
-  -- The remaining work: produce a uniform `C > 0` and prove the bound.
-  -- We obtain `C` from `rho_hat_rate` applied generically; per-Wbar
-  -- application then closes the goal.
-  --
-  -- Strategy: pick any concrete Wbar-instance (or use the abstract
-  -- inversion lemma's witness construction) to extract the uniform C.
-  -- The inversion lemma's C depends only on (L, lam, rho, K_log) — none
-  -- of which depend on Wbar — so the same C works for all Wbar.
-  -- We invoke `rho_hat_rate` with a placeholder t_crit equal to the
-  -- generic Wbar curve.
-  --
-  -- FIXME (uniform-C extraction): `rho_hat_rate` is currently stated
-  -- per-instance over a single `t_crit : ℝ → ℝ`. Extracting a
-  -- Wbar-uniform constant requires refactoring `rho_hat_rate` to
-  -- separate the Wbar-independent constants from the per-Wbar witness.
-  -- Leaving the uniform-C step as a single `sorry` here; the bridge
-  -- itself is honest.
-  sorry
+  -- Step 2: build a Wbar-specific auxiliary critical-time t_aux satisfying
+  -- a UNIVERSAL Laurent bound (residual ≤ K_log·|log ε| for all ε∈(0,1)).
+  -- Construction: on ε's where the JEPA window holds for this Wbar
+  --   (i.e. diagAmplitude(Wbar 0) r = ε ∧ ODE residual bound at ε),
+  --   t_aux ε := t_crit Wbar ε (residual ≤ K_log·|log ε| by hbridge);
+  -- otherwise t_aux ε := the asymptotic sum itself (residual = 0).
+  -- This is a classical case-split via Classical.propDecidable.
+  classical
+  let asyTerm : ℝ → ℝ := fun ε =>
+    (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+      (L : ℝ) / ((n : ℝ) * ρ ^ (2 * L - n - 1)) *
+        ε ^ (((n : ℝ) - 2) / (L : ℝ))
+  let JEPAwindow : ℝ → Prop := fun ε =>
+    diagAmplitude dat eb (Wbar 0) r = ε ∧
+    (∀ t ∈ Set.Ioo 0 t_max,
+      |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
+       - ((L : ℝ) * lam
+            * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / L)
+            * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L) / ρ))|
+      ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L))
+  let t_aux : ℝ → ℝ := fun ε =>
+    if JEPAwindow ε then t_crit Wbar ε else asyTerm ε
+  -- Step 3: prove the universal Laurent for t_aux.
+  have h_aux_laurent : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      |t_aux ε - asyTerm ε| ≤ K_log * |Real.log ε| := by
+    intro ε hε_pos hε_lt
+    by_cases hw : JEPAwindow ε
+    · -- In-window: t_aux ε = t_crit Wbar ε; bridge bounds the residual.
+      simp only [t_aux, if_pos hw]
+      obtain ⟨hwbar_init, hode⟩ := hw
+      have := hbridge Wbar ε hε_pos hε_lt hwbar_init hode
+      simpa [asyTerm, hlam_def, hρ_def] using this
+    · -- Out-of-window: t_aux ε = asyTerm ε; residual is exactly zero.
+      simp only [t_aux, if_neg hw, sub_self, abs_zero]
+      have hlog : 0 ≤ |Real.log ε| := abs_nonneg _
+      exact mul_nonneg hK_log_pos.le hlog
+  -- Step 4: apply rho_hat_rate to t_aux to extract (ε_0, C).
+  obtain ⟨ε_0, C, hε_0_pos, _hε_0_lt_one, hC_pos, hbound⟩ :=
+    rho_hat_rate L hL lam ρ hrho_pos hlam_pos t_aux K_log hK_log_pos
+      (by intro ε hε_pos hε_lt; simpa [asyTerm, hlam_def, hρ_def] using
+            h_aux_laurent ε hε_pos hε_lt)
+  refine ⟨ε_0, C, hε_0_pos, hC_pos, ?_⟩
+  intro ε hε_pos hε_lt_ε_0 _hε_lt_one hwbar_init hode
+  -- Step 5: under JEPA hyps, t_aux ε = t_crit Wbar ε, so the formula in
+  -- t_aux equals the formula in t_crit Wbar. Apply hbound and rewrite.
+  have hwindow : JEPAwindow ε := ⟨hwbar_init, hode⟩
+  have h_eq : t_aux ε = t_crit Wbar ε := by simp [t_aux, if_pos hwindow]
+  have := hbound ε hε_pos hε_lt_ε_0
+  -- hbound: |((L / (lam * t_aux ε * ε^{1/L}))^{1/(2L-2)}) − ρ| ≤ C·ε^{1/L}·|log ε|
+  -- Goal:   |((L / (lam * t_crit Wbar ε * ε^{1/L}))^{1/(2L-2)}) − ρ| ≤ same
+  simp only [h_eq] at this
+  exact this
 
 /-! ## §4.2(iii) — Negative-magnitude obstruction -/
 
