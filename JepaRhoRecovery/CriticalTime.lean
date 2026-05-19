@@ -305,7 +305,7 @@ noncomputable def purified_hitting_time
     analytic claim about envelopes. -/
 lemma purified_hitting_time_residual_eq
     (T_raw : ℝ) (lam rho : ℝ) (hlam : lam ≠ 0)
-    (L : ℕ) (epsilon : ℝ) :
+    (L : ℕ) (epsilon : ℝ) (hε : 0 < epsilon) :
     purified_hitting_time T_raw lam rho L epsilon
       - (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
           (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1))
@@ -314,17 +314,33 @@ lemma purified_hitting_time_residual_eq
       - (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
           (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
                         * epsilon ^ ((n : ℝ) / (L : ℝ))) := by
-  -- Both sides split off the n = 1 term from `Ioc 0 (2L-1)`. The
-  -- subtracted/added `Ioc 1 (2L-1)` sums in `purified_hitting_time`
-  -- cancel exactly the n ≥ 2 portions, leaving only the n = 1 term on
-  -- each side. The n = 1 term coincides under the exponent shift:
-  --   (n-2)/L at n=1 is -1/L = -(1/L), matching the raw form ε^{-1/L}
-  --   factored as 1 / ε^{1/L}.
-  -- Sketch: split each Ioc 0 (2L-1) into {1} ∪ Ioc 1 (2L-1) and rewrite
-  -- ε^((n-2)/L) = ε^(-(n)/L) * ε^((2n-2)/L) per term — but we keep the
-  -- statement at the level of cancellation, leaving the deep rpow
-  -- identity for the analytic envelope step below.
-  sorry
+  -- The two `Ioc 0 (2L-1)` sums on each side both split as
+  --   (n = 1 term) + (Ioc 1 (2L-1) sum).
+  -- The `purified_hitting_time` definition already cancels the
+  -- `Ioc 1 (2L-1)` portions, so the identity reduces to equality of the
+  -- two n=1 terms, which is the rpow identity ε^(-1/L) = 1/ε^(1/L)
+  -- (needs ε > 0).
+  unfold purified_hitting_time
+  rcases Nat.eq_zero_or_pos L with hL | hL
+  · subst hL
+    simp
+  -- L ≥ 1; split Ioc 0 (2L-1) = insert 1 (Ioc 1 (2L-1)).
+  have hIoc_eq : Finset.Ioc 0 (2 * L - 1) = insert 1 (Finset.Ioc 1 (2 * L - 1)) := by
+    ext k; simp only [Finset.mem_Ioc, Finset.mem_insert]; omega
+  have hnotmem : (1 : ℕ) ∉ Finset.Ioc 1 (2 * L - 1) := by
+    simp [Finset.mem_Ioc]
+  -- The n = 1 term coincides on raw and purified sides.
+  have hεne : epsilon ^ ((1 : ℝ) / (L : ℝ)) ≠ 0 :=
+    ne_of_gt (Real.rpow_pos_of_pos hε _)
+  have hrpow : epsilon ^ (((1 : ℝ) - 2) / (L : ℝ))
+              = (epsilon ^ ((1 : ℝ) / (L : ℝ)))⁻¹ := by
+    have : ((1 : ℝ) - 2) / (L : ℝ) = -((1 : ℝ) / (L : ℝ)) := by ring
+    rw [this, Real.rpow_neg hε.le]
+  rw [hIoc_eq, Finset.sum_insert hnotmem, Finset.sum_insert hnotmem]
+  push_cast
+  rw [hrpow]
+  field_simp
+  ring
 
 /-- **`purified_laurent_bound` (Path C, paper-2 spec extension).**
 
