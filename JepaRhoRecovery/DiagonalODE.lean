@@ -181,6 +181,88 @@ private lemma neg_gradWbar_dot_eq (dat : JEPAData d) (eb : SignedGenEigenbasis d
             (eb.pairs r).rho • W.mulVec (dualBasis dat eb r))) := by
   rw [Matrix.neg_mulVec, dotProduct_neg, gradWbar_eigenvector_identity]
 
+/-! ### Frobenius-norm entry bounds for uniform remainder boundedness -/
+
+/-- Each entry of a matrix is bounded in absolute value by its Frobenius norm. -/
+private lemma matFrobNorm_entry_abs_le {n m : ℕ}
+    (M : Matrix (Fin n) (Fin m) ℝ) (i : Fin n) (j : Fin m) :
+    |M i j| ≤ matFrobNorm M := by
+  unfold matFrobNorm
+  rw [show |M i j| = Real.sqrt ((M i j) ^ 2) from (Real.sqrt_sq_eq_abs (M i j)).symm]
+  apply Real.sqrt_le_sqrt
+  have h1 : (M i j) ^ 2 ≤ ∑ l, (M i l) ^ 2 :=
+    Finset.single_le_sum (f := fun l => (M i l) ^ 2)
+      (fun l _ => sq_nonneg _) (Finset.mem_univ j)
+  have h2 : ∑ l, (M i l) ^ 2 ≤ ∑ k, ∑ l, (M k l) ^ 2 :=
+    Finset.single_le_sum
+      (f := fun k => ∑ l, (M k l) ^ 2)
+      (fun k _ => Finset.sum_nonneg (fun l _ => sq_nonneg _))
+      (Finset.mem_univ i)
+  linarith
+
+/-- Entry of a matrix-vector product is bounded by Frobenius norm times L¹ vector norm. -/
+private lemma mulVec_entry_abs_le {n : ℕ}
+    (M : Matrix (Fin n) (Fin n) ℝ) (v : Fin n → ℝ) (i : Fin n) :
+    |M.mulVec v i| ≤ matFrobNorm M * (∑ j, |v j|) := by
+  have h_expand : M.mulVec v i = ∑ j, M i j * v j := by
+    simp [Matrix.mulVec, dotProduct]
+  rw [h_expand]
+  calc |∑ j, M i j * v j|
+      ≤ ∑ j, |M i j * v j| := Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ j, |M i j| * |v j| := by simp_rw [abs_mul]
+    _ ≤ ∑ j, matFrobNorm M * |v j| := by
+        apply Finset.sum_le_sum
+        intro j _
+        exact mul_le_mul_of_nonneg_right
+          (matFrobNorm_entry_abs_le M i j) (abs_nonneg _)
+    _ = matFrobNorm M * ∑ j, |v j| := by rw [← Finset.mul_sum]
+
+/-- Dot product with a matrix-vector product is bounded by L¹-Frobenius-L¹. -/
+private lemma dotProduct_mulVec_abs_le {n : ℕ}
+    (a : Fin n → ℝ) (M : Matrix (Fin n) (Fin n) ℝ) (b : Fin n → ℝ) :
+    |dotProduct a (M.mulVec b)| ≤ (∑ i, |a i|) * matFrobNorm M * (∑ j, |b j|) := by
+  calc |dotProduct a (M.mulVec b)|
+      = |∑ i, a i * M.mulVec b i| := by simp [dotProduct]
+    _ ≤ ∑ i, |a i * M.mulVec b i| := Finset.abs_sum_le_sum_abs _ _
+    _ = ∑ i, |a i| * |M.mulVec b i| := by simp_rw [abs_mul]
+    _ ≤ ∑ i, |a i| * (matFrobNorm M * ∑ j, |b j|) := by
+        apply Finset.sum_le_sum
+        intro i _
+        exact mul_le_mul_of_nonneg_left
+          (mulVec_entry_abs_le M b i) (abs_nonneg _)
+    _ = (∑ i, |a i|) * (matFrobNorm M * ∑ j, |b j|) := by rw [← Finset.sum_mul]
+    _ = (∑ i, |a i|) * matFrobNorm M * (∑ j, |b j|) := by ring
+
+/-- The diagonal amplitude `σ_r(W) = ⟨u_r, W·v_r⟩` is L¹-bounded
+    by Frobenius norm of W times L¹ norms of u_r and v_r. -/
+private lemma diagAmplitude_abs_le
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat) (r : Fin d)
+    (W : Matrix (Fin d) (Fin d) ℝ) :
+    |diagAmplitude dat eb W r|
+      ≤ (∑ i, |dualBasis dat eb r i|) * matFrobNorm W
+          * (∑ j, |(eb.pairs r).v j|) := by
+  -- diagAmplitude is the dot product of the dual basis with W·v_r.
+  have h_expand : diagAmplitude dat eb W r =
+      dotProduct (dualBasis dat eb r) (W.mulVec (eb.pairs r).v) := by
+    simp [diagAmplitude, dotProduct, Matrix.mulVec]
+  rw [h_expand]
+  exact dotProduct_mulVec_abs_le _ W _
+
+/-- L¹ norm of a matrix-vector product bounded by `d · Frob · L¹ vector`. -/
+private lemma mulVec_L1_le
+    (M : Matrix (Fin d) (Fin d) ℝ) (v : Fin d → ℝ) :
+    (∑ i, |M.mulVec v i|) ≤ (d : ℝ) * matFrobNorm M * (∑ j, |v j|) := by
+  calc (∑ i, |M.mulVec v i|)
+      ≤ ∑ _i : Fin d, matFrobNorm M * (∑ j, |v j|) := by
+        apply Finset.sum_le_sum
+        intro i _
+        exact mulVec_entry_abs_le M v i
+    _ = (Finset.univ : Finset (Fin d)).card * (matFrobNorm M * (∑ j, |v j|)) := by
+        rw [Finset.sum_const, nsmul_eq_mul]
+    _ = (d : ℝ) * (matFrobNorm M * (∑ j, |v j|)) := by
+        rw [Finset.card_univ, Fintype.card_fin]
+    _ = (d : ℝ) * matFrobNorm M * (∑ j, |v j|) := by ring
+
 /-
 **Per-timepoint remainder bound.**
     For fixed matrices `W` and `V_val` satisfying the balanced condition,
@@ -214,36 +296,270 @@ private lemma remainder_bound_at_point
             exact le_add_of_nonneg_right ( by positivity )
 
 /-- **Uniform remainder boundedness.** The remainder expression
-    `σ'(t) - (ρμ σ^{3-1/L} - μ σ³)` is uniformly bounded on `(0, t_max)`.
-    This follows from the gradient-flow structure: `HasDerivAt Wbar` on the open
-    interval makes `Wbar` continuous hence bounded on compact subsets;
-    the closed-interval hypotheses (`hBalanced`, `hQS_bound`, `hOff_bound`,
-    `hSigma_pos`) extend the control to the boundary, yielding a uniform `M`. -/
+    `σ'(t) - (ρμ σ^{3-1/L} - μ σ³)` is uniformly bounded on `(0, t_max)`,
+    given uniform matrix-norm bounds on `Wbar(t)` and `V(t)` over the
+    closed interval.
+
+    Proof strategy: bound the expression by triangle inequality into
+    three pieces:
+      * `|⟨V·u_r, V·W·u_r - ρ·W·u_r⟩|` — gradient-flow inner product,
+        bounded via `dotProduct_mulVec_abs_le` + entry-wise Frobenius bound.
+      * `|ρμ · σ^{3-1/L}|` — bounded via `σ ≤ σ_max := Su · B_W · Sv` from
+        `diagAmplitude_abs_le` + `Real.rpow_le_rpow`.
+      * `|(ρμ/ρ) · σ³| = |μ · σ³|` — bounded via `pow_le_pow_left₀`.
+
+    Each piece is a polynomial in `B_W`, `B_V`, the L¹ norms `Su, Sv`,
+    `|ρ|`, `μ`, and the dimension `d`. The proof body uses these helpers
+    to construct an explicit `M`. -/
 private lemma remainder_uniformly_bounded
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L) (r : Fin d) (hrho_ne : (eb.pairs r).rho ≠ 0)
-    (epsilon : ℝ) (heps_pos : 0 < epsilon) (heps_small : epsilon < 1)
-    (t_max : ℝ) (ht_max : 0 < t_max)
+    (epsilon : ℝ) (_heps_pos : 0 < epsilon) (_heps_small : epsilon < 1)
+    (t_max : ℝ) (_ht_max : 0 < t_max)
     (Wbar V : ℝ → Matrix (Fin d) (Fin d) ℝ)
-    (hWbar_flow : ∀ t ∈ Set.Ioo 0 t_max,
+    (_hWbar_flow : ∀ t ∈ Set.Ioo 0 t_max,
       HasDerivAt Wbar (-(gradWbar dat (Wbar t) (V t))) t)
-    (hBalanced : ∀ t ∈ Set.Icc 0 t_max, BalancedInit L dat eb (Wbar t))
-    (C : ℝ) (hC_pos : 0 < C)
-    (hQS_bound : ∀ t ∈ Set.Icc 0 t_max,
+    (_hBalanced : ∀ t ∈ Set.Icc 0 t_max, BalancedInit L dat eb (Wbar t))
+    (C : ℝ) (_hC_pos : 0 < C)
+    (_hQS_bound : ∀ t ∈ Set.Icc 0 t_max,
         matFrobNorm (V t - quasiStaticDecoder dat (Wbar t))
           ≤ C * Real.rpow epsilon (2 * ((L : ℝ) - 1) / L))
-    (K_off : ℝ) (hK_pos : 0 < K_off)
-    (hOff_bound : ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
+    (K_off : ℝ) (_hK_pos : 0 < K_off)
+    (_hOff_bound : ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
         |offDiagAmplitude dat eb (Wbar t) r s|
           ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
-    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r) :
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r)
+    -- New: uniform Frobenius-norm bounds on Wbar and V over the closed
+    -- interval. These are the genuine boundedness inputs needed for a
+    -- uniform-in-t remainder bound; deriving them from gradient-flow
+    -- Lyapunov structure is a separate (Arora-style) analysis.
+    (B_W B_V : ℝ) (hBW_nn : 0 ≤ B_W) (hBV_nn : 0 ≤ B_V)
+    (hWbar_bdd : ∀ t ∈ Set.Icc 0 t_max, matFrobNorm (Wbar t) ≤ B_W)
+    (hV_bdd : ∀ t ∈ Set.Icc 0 t_max, matFrobNorm (V t) ≤ B_V) :
     ∃ M : ℝ, 0 ≤ M ∧ ∀ t ∈ Set.Ioo 0 t_max,
       |dotProduct (dualBasis dat eb r)
             ((-(gradWbar dat (Wbar t) (V t))).mulVec (eb.pairs r).v) -
           ((eb.pairs r).rho * (eb.pairs r).mu
               * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / (L : ℝ))
             - ((eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho)
-              * (diagAmplitude dat eb (Wbar t) r) ^ 3)| ≤ M := by sorry
+              * (diagAmplitude dat eb (Wbar t) r) ^ 3)| ≤ M := by
+  -- Abbreviations.
+  set u : Fin d → ℝ := dualBasis dat eb r with hu_def
+  set Su : ℝ := ∑ i, |u i| with hSu_def
+  set Sv : ℝ := ∑ i, |(eb.pairs r).v i| with hSv_def
+  set ρ : ℝ := (eb.pairs r).rho with hρ_def
+  set μ : ℝ := (eb.pairs r).mu with hμ_def
+  set d_real : ℝ := (d : ℝ) with hd_real_def
+  have hSu_nn : 0 ≤ Su := Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+  have hSv_nn : 0 ≤ Sv := Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+  have hμ_pos : 0 < μ := (eb.pairs r).hmu_pos
+  have hd_nn : 0 ≤ d_real := Nat.cast_nonneg d
+  -- σ uniform bound: σ_max := Su · B_W · Sv.
+  set σ_max : ℝ := Su * B_W * Sv with hσmax_def
+  have hσmax_nn : 0 ≤ σ_max :=
+    mul_nonneg (mul_nonneg hSu_nn hBW_nn) hSv_nn
+  -- Exponent 3 - 1/L is nonneg for L ≥ 2.
+  have hexp_nn : (0 : ℝ) ≤ 3 - 1 / (L : ℝ) := by
+    have hL_pos : (0 : ℝ) < (L : ℝ) := by
+      have : (2 : ℝ) ≤ (L : ℝ) := Nat.ofNat_le_cast.mpr hL
+      linarith
+    have h_one_div : 1 / (L : ℝ) ≤ 1 := by
+      rw [div_le_one hL_pos]
+      have : (2 : ℝ) ≤ (L : ℝ) := Nat.ofNat_le_cast.mpr hL
+      linarith
+    linarith
+  -- Build M as an explicit polynomial in (d, B_V, B_W, Su, Sv, |ρ|, μ).
+  set M_gradV : ℝ := d_real^2 * B_V^2 * B_W * Su^2 with hMgradV_def
+  set M_gradρ : ℝ := |ρ| * d_real * B_V * B_W * Su^2 with hMgradρ_def
+  set M_rpow : ℝ := |ρ| * μ * (σ_max ^ (3 - 1 / (L : ℝ))) with hMrpow_def
+  set M_cube : ℝ := μ * (σ_max ^ 3) with hMcube_def
+  set M : ℝ := M_gradV + M_gradρ + M_rpow + M_cube with hM_def
+  -- Nonnegativity of M.
+  have hMgradV_nn : 0 ≤ M_gradV := by
+    have h1 : 0 ≤ d_real^2 := sq_nonneg _
+    have h2 : 0 ≤ B_V^2 := sq_nonneg _
+    have h3 : 0 ≤ Su^2 := sq_nonneg _
+    have h4 : 0 ≤ d_real^2 * B_V^2 := mul_nonneg h1 h2
+    have h5 : 0 ≤ d_real^2 * B_V^2 * B_W := mul_nonneg h4 hBW_nn
+    exact mul_nonneg h5 h3
+  have hMgradρ_nn : 0 ≤ M_gradρ := by
+    have h1 : 0 ≤ |ρ| := abs_nonneg _
+    have h2 : 0 ≤ |ρ| * d_real := mul_nonneg h1 hd_nn
+    have h3 : 0 ≤ |ρ| * d_real * B_V := mul_nonneg h2 hBV_nn
+    have h4 : 0 ≤ |ρ| * d_real * B_V * B_W := mul_nonneg h3 hBW_nn
+    exact mul_nonneg h4 (sq_nonneg _)
+  have hMrpow_nn : 0 ≤ M_rpow := by
+    have h1 : 0 ≤ |ρ| * μ := mul_nonneg (abs_nonneg _) hμ_pos.le
+    exact mul_nonneg h1 (Real.rpow_nonneg hσmax_nn _)
+  have hMcube_nn : 0 ≤ M_cube := mul_nonneg hμ_pos.le (by positivity)
+  have hM_nn : 0 ≤ M := by
+    simp only [hM_def]; linarith
+  refine ⟨M, hM_nn, ?_⟩
+  intro t ht
+  have ht_icc : t ∈ Set.Icc 0 t_max := Set.Ioo_subset_Icc_self ht
+  set W_t : Matrix (Fin d) (Fin d) ℝ := Wbar t with hWt_def
+  set V_t : Matrix (Fin d) (Fin d) ℝ := V t with hVt_def
+  set σ : ℝ := diagAmplitude dat eb W_t r with hσ_def
+  have hW_t : matFrobNorm W_t ≤ B_W := hWbar_bdd t ht_icc
+  have hV_t : matFrobNorm V_t ≤ B_V := hV_bdd t ht_icc
+  have hσ_pos : 0 < σ := hSigma_pos t ht_icc
+  -- σ ≤ σ_max via diagAmplitude_abs_le.
+  have hσ_le : σ ≤ σ_max := by
+    have h_abs : |σ| ≤ Su * matFrobNorm W_t * Sv := by
+      rw [hσ_def]
+      exact diagAmplitude_abs_le dat eb r W_t
+    have h_mono : Su * matFrobNorm W_t * Sv ≤ σ_max := by
+      rw [hσmax_def]
+      exact mul_le_mul_of_nonneg_right
+        (mul_le_mul_of_nonneg_left hW_t hSu_nn) hSv_nn
+    exact (le_of_abs_le h_abs).trans h_mono
+  -- σ^{3-1/L} ≤ σ_max^{3-1/L} via rpow monotonicity (positive base).
+  have hσ_rpow_le : σ ^ (3 - 1 / (L : ℝ)) ≤ σ_max ^ (3 - 1 / (L : ℝ)) :=
+    Real.rpow_le_rpow hσ_pos.le hσ_le hexp_nn
+  -- σ^3 ≤ σ_max^3 via pow monotonicity (nonneg base, nonneg result).
+  have hσ_cube_le : σ ^ 3 ≤ σ_max ^ 3 :=
+    pow_le_pow_left₀ hσ_pos.le hσ_le 3
+  -- Simplify ρμ/ρ = μ (since ρ ≠ 0).
+  have h_div_simp : ρ * μ / ρ = μ := by
+    rw [mul_comm ρ μ, mul_div_assoc, div_self hrho_ne, mul_one]
+  -- Now rewrite the LHS expression. Apply neg_gradWbar_dot_eq.
+  rw [neg_gradWbar_dot_eq]
+  -- The expression is now |-(⟨V_t·u, V_t·W_t·u - ρ•W_t·u⟩) - (ρμ σ^{3-1/L} - (ρμ/ρ)σ³)|.
+  -- Simplify the cube coefficient.
+  rw [show (eb.pairs r).rho * (eb.pairs r).mu / (eb.pairs r).rho = μ from h_div_simp]
+  -- Split into gradient piece + closed-form piece via triangle inequality.
+  -- a - b = (-(⟨V·u, V·W·u - ρ•W·u⟩)) - (ρμ σ^{3-1/L} - μ σ³)
+  -- |a - b| ≤ |a| + |b|; |a| = |⟨V·u, V·W·u - ρ•W·u⟩|; |b| ≤ |ρμ|·σ^{3-1/L} + μ·σ³
+  set A : ℝ := dotProduct (V_t.mulVec u) (V_t.mulVec (W_t.mulVec u) - ρ • W_t.mulVec u)
+    with hA_def
+  set B : ℝ := ρ * μ * Real.rpow σ (3 - 1 / (L : ℝ)) - μ * σ ^ 3 with hB_def
+  -- Goal becomes: |-A - B| ≤ M.
+  have h_outer_tri : |(-A) - B| ≤ |A| + |B| := by
+    have h_eq : -A - B = -(A + B) := by ring
+    rw [h_eq, abs_neg]
+    exact abs_add_le _ _
+  -- Bound |A|.
+  have hA_bound : |A| ≤ M_gradV + M_gradρ := by
+    have hA_split : A = dotProduct (V_t.mulVec u) (V_t.mulVec (W_t.mulVec u))
+                       - ρ * dotProduct (V_t.mulVec u) (W_t.mulVec u) := by
+      simp only [hA_def, dotProduct_sub, dotProduct_smul, smul_eq_mul]
+    rw [hA_split]
+    refine (abs_sub _ _).trans ?_
+    -- |t1 - ρ·t2| ≤ |t1| + |ρ|·|t2|
+    have h_abs_neg :
+        |dotProduct (V_t.mulVec u) (V_t.mulVec (W_t.mulVec u))| +
+            |ρ * dotProduct (V_t.mulVec u) (W_t.mulVec u)|
+        ≤ M_gradV + M_gradρ := by
+      apply add_le_add
+      · -- Bound |⟨V·u, V·W·u⟩|.
+        calc |dotProduct (V_t.mulVec u) (V_t.mulVec (W_t.mulVec u))|
+            ≤ (∑ i, |V_t.mulVec u i|) * matFrobNorm V_t
+                * (∑ j, |W_t.mulVec u j|) :=
+              dotProduct_mulVec_abs_le _ V_t _
+          _ ≤ (d_real * B_V * Su) * B_V * (d_real * B_W * Su) := by
+              have hF1 : (∑ i, |V_t.mulVec u i|) ≤ d_real * B_V * Su := by
+                have := mulVec_L1_le V_t u
+                have h2 : d_real * matFrobNorm V_t * Su ≤ d_real * B_V * Su :=
+                  mul_le_mul_of_nonneg_right
+                    (mul_le_mul_of_nonneg_left hV_t hd_nn) hSu_nn
+                calc (∑ i, |V_t.mulVec u i|)
+                    ≤ d_real * matFrobNorm V_t * Su := by
+                      rw [hd_real_def, hSu_def] at *; exact this
+                  _ ≤ d_real * B_V * Su := h2
+              have hF3 : (∑ j, |W_t.mulVec u j|) ≤ d_real * B_W * Su := by
+                have := mulVec_L1_le W_t u
+                have h2 : d_real * matFrobNorm W_t * Su ≤ d_real * B_W * Su :=
+                  mul_le_mul_of_nonneg_right
+                    (mul_le_mul_of_nonneg_left hW_t hd_nn) hSu_nn
+                calc (∑ j, |W_t.mulVec u j|)
+                    ≤ d_real * matFrobNorm W_t * Su := by
+                      rw [hd_real_def, hSu_def] at *; exact this
+                  _ ≤ d_real * B_W * Su := h2
+              -- Now combine. Need: prod ≤ (d·B_V·Su) · B_V · (d·B_W·Su)
+              have hF2 : matFrobNorm V_t ≤ B_V := hV_t
+              have h_prod1_nn : 0 ≤ d_real * B_V * Su :=
+                mul_nonneg (mul_nonneg hd_nn hBV_nn) hSu_nn
+              have h_prod3_nn : 0 ≤ d_real * B_W * Su :=
+                mul_nonneg (mul_nonneg hd_nn hBW_nn) hSu_nn
+              have h_sum_F1_nn : 0 ≤ ∑ i, |V_t.mulVec u i| :=
+                Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+              have h_sum_F1_F2_nn : 0 ≤ (∑ i, |V_t.mulVec u i|) * matFrobNorm V_t :=
+                mul_nonneg h_sum_F1_nn (Real.sqrt_nonneg _)
+              have step1 : (∑ i, |V_t.mulVec u i|) * matFrobNorm V_t
+                          ≤ (d_real * B_V * Su) * B_V := by
+                have hsrc : 0 ≤ matFrobNorm V_t := Real.sqrt_nonneg _
+                exact mul_le_mul hF1 hF2 hsrc h_prod1_nn
+              have step2 : (∑ i, |V_t.mulVec u i|) * matFrobNorm V_t * (∑ j, |W_t.mulVec u j|)
+                          ≤ (d_real * B_V * Su) * B_V * (d_real * B_W * Su) := by
+                apply mul_le_mul step1 hF3
+                · exact Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+                · exact mul_nonneg h_prod1_nn hBV_nn
+              exact step2
+          _ = M_gradV := by
+              rw [hMgradV_def]; ring
+      · -- Bound |ρ · ⟨V·u, W·u⟩|.
+        rw [abs_mul]
+        calc |ρ| * |dotProduct (V_t.mulVec u) (W_t.mulVec u)|
+            ≤ |ρ| * ((∑ i, |V_t.mulVec u i|) * matFrobNorm W_t
+                  * (∑ j, |u j|)) := by
+              apply mul_le_mul_of_nonneg_left
+                (dotProduct_mulVec_abs_le _ W_t _) (abs_nonneg _)
+          _ ≤ |ρ| * ((d_real * B_V * Su) * B_W * Su) := by
+              apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+              have hF1 : (∑ i, |V_t.mulVec u i|) ≤ d_real * B_V * Su := by
+                have := mulVec_L1_le V_t u
+                have h2 : d_real * matFrobNorm V_t * Su ≤ d_real * B_V * Su :=
+                  mul_le_mul_of_nonneg_right
+                    (mul_le_mul_of_nonneg_left hV_t hd_nn) hSu_nn
+                calc (∑ i, |V_t.mulVec u i|)
+                    ≤ d_real * matFrobNorm V_t * Su := by
+                      rw [hd_real_def, hSu_def] at *; exact this
+                  _ ≤ d_real * B_V * Su := h2
+              have h_sum_eq : ∑ j, |u j| = Su := by rw [hSu_def]
+              rw [h_sum_eq]
+              have h_prod1_nn : 0 ≤ d_real * B_V * Su :=
+                mul_nonneg (mul_nonneg hd_nn hBV_nn) hSu_nn
+              have h_sum_F1_nn : 0 ≤ ∑ i, |V_t.mulVec u i| :=
+                Finset.sum_nonneg (fun _ _ => abs_nonneg _)
+              have step1 : (∑ i, |V_t.mulVec u i|) * matFrobNorm W_t
+                          ≤ (d_real * B_V * Su) * B_W :=
+                mul_le_mul hF1 hW_t (Real.sqrt_nonneg _) h_prod1_nn
+              exact mul_le_mul_of_nonneg_right step1 hSu_nn
+          _ = M_gradρ := by
+              rw [hMgradρ_def]; ring
+    exact h_abs_neg
+  -- Bound |B|.
+  have hB_bound : |B| ≤ M_rpow + M_cube := by
+    have hB_eq : B = ρ * μ * Real.rpow σ (3 - 1 / (L : ℝ)) - μ * σ ^ 3 := hB_def
+    rw [hB_eq]
+    refine (abs_sub _ _).trans ?_
+    apply add_le_add
+    · -- |ρμ · σ^{3-1/L}| ≤ |ρ|·μ · σ_max^{3-1/L}.
+      rw [abs_mul, abs_mul]
+      have h_rpow_nn : 0 ≤ Real.rpow σ (3 - 1 / (L : ℝ)) :=
+        Real.rpow_nonneg hσ_pos.le _
+      have h_abs_rpow : |Real.rpow σ (3 - 1 / (L : ℝ))| = Real.rpow σ (3 - 1 / (L : ℝ)) :=
+        abs_of_nonneg h_rpow_nn
+      have h_abs_μ : |μ| = μ := abs_of_pos hμ_pos
+      rw [h_abs_rpow, h_abs_μ]
+      calc |ρ| * μ * Real.rpow σ (3 - 1 / (L : ℝ))
+          ≤ |ρ| * μ * Real.rpow σ_max (3 - 1 / (L : ℝ)) := by
+            apply mul_le_mul_of_nonneg_left hσ_rpow_le
+            exact mul_nonneg (abs_nonneg _) hμ_pos.le
+        _ = M_rpow := by simp [hMrpow_def]
+    · -- |μ · σ³| = μ·σ³ ≤ μ · σ_max³.
+      rw [abs_mul]
+      have h_abs_μ : |μ| = μ := abs_of_pos hμ_pos
+      have h_abs_cube : |σ ^ 3| = σ ^ 3 := abs_of_nonneg (by positivity)
+      rw [h_abs_μ, h_abs_cube]
+      calc μ * σ ^ 3
+          ≤ μ * σ_max ^ 3 := mul_le_mul_of_nonneg_left hσ_cube_le hμ_pos.le
+        _ = M_cube := by rw [hMcube_def]
+  -- Combine via outer triangle inequality.
+  calc |(-A) - B|
+      ≤ |A| + |B| := h_outer_tri
+    _ ≤ (M_gradV + M_gradρ) + (M_rpow + M_cube) := add_le_add hA_bound hB_bound
+    _ = M := by rw [hM_def]; ring
 
 /-! ## Main theorem: generalised diagonal ODE -/
 
@@ -314,7 +630,12 @@ theorem generalised_diagonal_ODE
       ∀ s : Fin d, s ≠ r → ∀ t ∈ Set.Icc 0 t_max,
         |offDiagAmplitude dat eb (Wbar t) r s|
           ≤ K_off * Real.rpow epsilon ((1 : ℝ) / L))
-    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r) :
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < diagAmplitude dat eb (Wbar t) r)
+    -- Uniform Frobenius-norm bounds on Wbar and V (needed for the
+    -- remainder bound; threaded through from `remainder_uniformly_bounded`).
+    (B_W B_V : ℝ) (hBW_nn : 0 ≤ B_W) (hBV_nn : 0 ≤ B_V)
+    (hWbar_bdd : ∀ t ∈ Set.Icc 0 t_max, matFrobNorm (Wbar t) ≤ B_W)
+    (hV_bdd : ∀ t ∈ Set.Icc 0 t_max, matFrobNorm (V t) ≤ B_V) :
     ∃ K_R : ℝ, 0 < K_R ∧
       ∀ t ∈ Set.Ioo 0 t_max,
         ∃ σ' : ℝ,
@@ -338,6 +659,7 @@ theorem generalised_diagonal_ODE
   have h_uniform_bdd := remainder_uniformly_bounded dat eb L hL r hrho_ne
     epsilon heps_pos heps_small t_max ht_max Wbar V hWbar_flow hBalanced
     C hC_pos hQS_bound K_off hK_pos hOff_bound hSigma_pos
+    B_W B_V hBW_nn hBV_nn hWbar_bdd hV_bdd
   -- Step 4: assemble K_R from M and ε^p
   obtain ⟨M, hM_nn, hM_bound⟩ := h_uniform_bdd
   have heps_rpow_pos : (0 : ℝ) < epsilon.rpow ((2 * (↑L) - 1) / ↑L) :=
