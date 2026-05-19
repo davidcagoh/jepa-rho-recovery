@@ -50,79 +50,93 @@ namespace JepaRhoRecovery
 
 variable {d : ℕ}
 
-/-! ## §4.2(i) — Sign identification -/
+/-! ## §4.2(i) — Sign identification (trichotomy form, Path b — session 78)
 
-/-- **Theorem 4.2(i) (Sign identification — positive branch).**
+    **Refactor (session 78, framing decision b).** The iff form
+    `ρ > 0 ↔ HasPositiveAsymptote σ σ_r*` was abandoned per the session-76
+    FIXME — it failed structurally in two regimes (ρ = 0 yields a positive
+    constant trajectory; ρ < 0 with even L has σ_r* = ρ^L > 0). Instead,
+    we package the trichotomy as three concrete forward lemmas, one per
+    sign branch. Each says what σ_r *does*, not what it iff-equals.
 
-    Feature `r` has `ρ_r* > 0` *if and only if* its diagonal amplitude
-    `σ_r(t)` approaches a strictly positive asymptote
-    `σ_r* = (ρ_r*)^L` as `t → ∞`.
-
-    **Statement correction (session 76).** Earlier drafts used
-    `σ_r* = √(ρ_r* μ_r)`, but session 73's bug-find on Layer 4.1(a)
-    established that the actual fixed point of the diagonal ODE
-    `σ̇ = λ · σ^{3-1/L} − (λ/ρ) · σ³` is `(ρ_r*)^L` (μ does not appear).
-    See `SignedODE.lean` header comment for the counterexample.
-
-    This is one direction of the trichotomy:
-      * `ρ > 0` ⇒ positive asymptote (paper-1 `actual_critical_time` lineage).
-      * positive asymptote ⇒ `ρ > 0` (contrapositive of Layer 4.1(c)
-        suppression for ρ < 0, and of the zero-branch degeneracy).
-
-    Stated abstractly over a limit predicate `HasPositiveAsymptote` so the
-    statement is independent of how the asymptote is formalised.
-
-    PROVIDED SOLUTION
-    Forward (`ρ > 0 ⇒ σ → σ_r* > 0`):
-      Apply paper-1's `actual_critical_time` / `bernoulli_laurent_bound`
-      lineage, which proves `σ_r(τ_r*) = p · σ_r*` for the critical-time
-      hitting time τ_r*. Combine with monotonic convergence on `[τ_r*, ∞)`
-      (positive-branch fixed-point stability — Layer 4.1(a), pending port).
-    Backward (`σ → σ_r* > 0 ⇒ ρ > 0`):
-      Contrapose. If `ρ < 0`, `sigma_negative_branch_le_init` from
-      `SignedODE.lean` gives σ_r(t) ≤ σ_r(0) = ε^{1/L} → 0. If `ρ = 0`,
-      the ODE degenerates to σ̇ = 0 (Layer 4.1(b), pending) and σ stays at
-      ε^{1/L}. Neither has a strictly positive asymptote.
-
-    Status: sorry'd; pending positive-branch convergence port (Layer 4.1(a))
-    and zero-branch lemma (Layer 4.1(b)).
-
-    **FIXME (session 76) — structural semantics gap.** Even after the
-    `σ_r* = ρ^L` spec fix, the *iff* form below is **not provable as
-    stated** because the backward direction fails in two regimes:
-
-      * `ρ_r* = 0`: by `sigma_zero_branch_constant`, `σ_r ≡ σ_r(0) =
-        ε^{1/L} > 0`, so `σ_r` DOES approach a strictly positive
-        asymptote (namely `ε^{1/L}`). This violates the iff.
-      * `ρ_r* < 0` with even `L`: `(ρ_r*)^L > 0`; while the negative
-        branch ensures `σ_r ≤ σ_r(0)`, the iff matches an asymptote
-        at the specific value `(ρ_r*)^L` which is independent of σ_r's
-        actual behaviour.
-
-    Two refactors are possible (require user input on framing):
-      (a) Replace `HasPositiveAsymptote` with concrete
-          `Filter.Tendsto sigma atTop (nhds ((eb.pairs r).rho ^ L))`
-          AND restrict the iff to ρ ≥ 0 (or strengthen RHS to demand
-          asymptote *strictly larger than* σ_r(0)).
-      (b) Reformulate as one-directional: `0 < ρ_r* → Tendsto σ_r
-          atTop (nhds ((eb.pairs r).rho ^ L))` (pure forward); negative
-          and zero cases handled via separate forward lemmas.
-
-    Either way, the current signature also needs ODE hypotheses
-    (`hSigma_pos`, `hSigma_below`, `hSigma_cont`, `hSigma_ode`) to make
-    the conclusion derivable from `sigma_positive_branch_converges`.
-    Defer until after Aristotle 22e700ca lands.
+    The headline (signed-decomposition theorem in `Main.lean`) consumes
+    these forwards by case-analysis on `sign (eb.pairs r).rho`.
 -/
-theorem sign_identification_pos_iff_asymptote
+
+/-- **Theorem 4.2(i⁺) (Positive branch — convergence to ρ^L).**
+
+    For features with `ρ_r* > 0`, the diagonal amplitude `σ_r(t)`
+    converges to the positive fixed point `(ρ_r*)^L` as `t → ∞`.
+
+    Direct wrapper of `sigma_positive_branch_converges` (Layer 4.1(a′),
+    Aristotle `22e700ca`, sorry-free). -/
+theorem sign_identification_pos_forward
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
     (r : Fin d)
+    (hrho_pos : 0 < (eb.pairs r).rho)
+    (lambda : ℝ) (hlam_pos : 0 < lambda)
     (sigma : ℝ → ℝ)
-    (HasPositiveAsymptote : (ℝ → ℝ) → ℝ → Prop)
-    (sigma_star : ℝ)
-    (h_sigma_star_def : sigma_star = (eb.pairs r).rho ^ L) :
-    (0 < (eb.pairs r).rho ↔ HasPositiveAsymptote sigma sigma_star) := by
-  sorry
+    (hSigma_pos : ∀ t : ℝ, 0 ≤ t → 0 < sigma t)
+    (hSigma_below : ∀ t : ℝ, 0 ≤ t → sigma t < (eb.pairs r).rho ^ L)
+    (hSigma_cont : Continuous sigma)
+    (hSigma_ode : ∀ t : ℝ, 0 < t →
+      HasDerivAt sigma
+        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
+          - (lambda / (eb.pairs r).rho) * (sigma t) ^ 3) t) :
+    Filter.Tendsto sigma Filter.atTop (nhds ((eb.pairs r).rho ^ L)) := by
+  exact sigma_positive_branch_converges L hL lambda (eb.pairs r).rho
+    hlam_pos hrho_pos sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode
+
+/-- **Theorem 4.2(i⁰) (Zero branch — trajectory is constant at initial value).**
+
+    For features with `ρ_r* = 0`, the diagonal-amplitude ODE degenerates
+    to `σ̇ = 0` (the `λ/ρ` term is undefined; per `SignedODE.lean` header
+    we adopt the degenerate form), so `σ_r(t) ≡ σ_r(0)` on `[0, t_max]`.
+    No asymptotic recovery of `ρ_r*` is possible from σ alone.
+
+    Direct wrapper of `sigma_zero_branch_constant`. -/
+theorem sign_identification_zero_forward
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (hL : 2 ≤ L)
+    (r : Fin d)
+    (hrho_zero : (eb.pairs r).rho = 0)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (sigma : ℝ → ℝ)
+    (hSigma_cont : ContinuousOn sigma (Set.Icc 0 t_max))
+    (hSigma_ode : ∀ t ∈ Set.Ioo 0 t_max, HasDerivAt sigma 0 t) :
+    ∀ t ∈ Set.Icc 0 t_max, sigma t = sigma 0 := by
+  -- `hrho_zero` is the discriminator; the degenerate ODE σ̇ = 0 is
+  -- the regime-appropriate replacement (paper §6.3).
+  exact sigma_zero_branch_constant L hL t_max ht_max sigma hSigma_cont hSigma_ode
+
+/-- **Theorem 4.2(i⁻) (Negative branch — trajectory is bounded above by initial value).**
+
+    For features with `ρ_r* < 0` (and λ < 0; both signs flip together
+    under the JEPA conventions), the diagonal amplitude is bounded
+    above by its initial value: `σ_r(t) ≤ σ_r(0)` on `[0, t_max]`. The
+    magnitude `|ρ_r*|` is therefore *not* recoverable from σ alone —
+    direct sample-covariance estimation is required (see
+    `signed_recovery_neg_magnitude_obstruction`).
+
+    Direct wrapper of `sigma_negative_branch_le_init` (Layer 4.1(c)). -/
+theorem sign_identification_neg_forward
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (hL : 2 ≤ L)
+    (r : Fin d)
+    (hrho_neg : (eb.pairs r).rho < 0)
+    (lambda : ℝ) (hlam_neg : lambda < 0)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (sigma : ℝ → ℝ)
+    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < sigma t)
+    (hSigma_cont : ContinuousOn sigma (Set.Icc 0 t_max))
+    (hSigma_ode : ∀ t ∈ Set.Ioo 0 t_max,
+      HasDerivAt sigma
+        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
+          - (lambda / (eb.pairs r).rho) * (sigma t) ^ 3) t) :
+    ∀ t ∈ Set.Icc 0 t_max, sigma t ≤ sigma 0 := by
+  exact sigma_negative_branch_le_init L hL lambda (eb.pairs r).rho
+    hlam_neg hrho_neg t_max ht_max sigma hSigma_pos hSigma_cont hSigma_ode
 
 /-! ## §4.2(ii) — Magnitude recovery for positive features
 
