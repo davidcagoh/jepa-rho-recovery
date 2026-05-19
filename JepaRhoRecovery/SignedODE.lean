@@ -271,4 +271,57 @@ theorem sigma_zero_branch_constant
       hMono (Set.left_mem_Icc.mpr ht_max.le) ht ht.1
     linarith
 
+/-! ## Theorem 4.1(a′) — Positive-branch convergence to ρ^L -/
+
+/-- **Theorem 4.1(a′) (Positive-branch convergence).**
+
+    Stronger companion to `sigma_positive_branch_monotone`. With the same
+    ODE on the half-line `[0, ∞)` and the same bound `σ(t) < ρ^L`, the
+    diagonal amplitude converges to the fixed point `ρ^L` as `t → ∞`.
+
+    This is the convergence statement consumed by Layer 4.2(i)
+    (`sign_identification_pos_iff_asymptote`) — the monotonicity lemma
+    alone is not enough to identify the asymptote.
+
+    **PROVIDED SOLUTION** (7 steps; mirrors a standard ODE Lyapunov argument):
+    1. Apply `sigma_positive_branch_monotone` on every restriction
+       `[0, T]` (T > 0). Since `sigma t < ρ^L` for every `t ≥ 0`, the
+       monotonicity hypotheses are satisfied uniformly, so `σ` is
+       `Monotone` (globally non-decreasing) on `[0, ∞)`.
+    2. `σ` is bounded above by `ρ^L`. Together with (1) and standard
+       monotone-convergence (`Monotone.tendsto_atTop`), `σ` has a limit
+       `σ_∞ ∈ [σ(0), ρ^L]`.
+    3. Suppose for contradiction `σ_∞ < ρ^L`. Define
+       `F : ℝ → ℝ, F s := λ · s^{3 − 1/L} − (λ/ρ) · s^3`.
+       By `rpow_dominates_cube` (already in this file), `F σ_∞ > 0`.
+       Set `η := F σ_∞ / 2 > 0`.
+    4. `F` is continuous on `(0, ρ^L)`, so there exists `δ > 0` with
+       `F s ≥ η` for `s ∈ [σ_∞ − δ, σ_∞]`. WLOG `σ_∞ − δ > σ(0) / 2 > 0`.
+    5. Since `σ t → σ_∞` and `σ` is monotone, there is `T` such that
+       `σ t ∈ [σ_∞ − δ, σ_∞]` for all `t ≥ T`. By the ODE hypothesis,
+       `σ̇(t) = F (σ t) ≥ η` for `t ≥ T`.
+    6. By the mean value theorem (or FTC), for `t ≥ T`,
+       `σ t − σ T ≥ η · (t − T)`. Take `t → ∞`: LHS bounded by `ρ^L`,
+       RHS → ∞. Contradiction.
+    7. Therefore `σ_∞ = ρ^L`.
+
+    Existing infrastructure to use:
+      - `sigma_positive_branch_monotone` (this file) — produces (1).
+      - `rpow_dominates_cube` (this file, private) — produces `F σ_∞ > 0`.
+      - Mathlib: `Monotone.tendsto_atTop`, `Filter.Tendsto`,
+        `Continuous.tendsto`, `MeanValueTheorem` / `sub_le_of_hasDerivAt_ge`. -/
+theorem sigma_positive_branch_converges
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda rho : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)
+    (sigma : ℝ → ℝ)
+    (hSigma_pos : ∀ t : ℝ, 0 ≤ t → 0 < sigma t)
+    (hSigma_below : ∀ t : ℝ, 0 ≤ t → sigma t < rho ^ L)
+    (hSigma_cont : Continuous sigma)
+    (hSigma_ode : ∀ t : ℝ, 0 < t →
+      HasDerivAt sigma
+        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
+          - (lambda / rho) * (sigma t) ^ 3) t) :
+    Filter.Tendsto sigma Filter.atTop (nhds (rho ^ L)) := by
+  sorry
+
 end JepaRhoRecovery

@@ -55,7 +55,13 @@ variable {d : ℕ}
 
     Feature `r` has `ρ_r* > 0` *if and only if* its diagonal amplitude
     `σ_r(t)` approaches a strictly positive asymptote
-    `σ_r* = √(ρ_r* μ_r)` as `t → ∞`.
+    `σ_r* = (ρ_r*)^L` as `t → ∞`.
+
+    **Statement correction (session 76).** Earlier drafts used
+    `σ_r* = √(ρ_r* μ_r)`, but session 73's bug-find on Layer 4.1(a)
+    established that the actual fixed point of the diagonal ODE
+    `σ̇ = λ · σ^{3-1/L} − (λ/ρ) · σ³` is `(ρ_r*)^L` (μ does not appear).
+    See `SignedODE.lean` header comment for the counterexample.
 
     This is one direction of the trichotomy:
       * `ρ > 0` ⇒ positive asymptote (paper-1 `actual_critical_time` lineage).
@@ -79,6 +85,32 @@ variable {d : ℕ}
 
     Status: sorry'd; pending positive-branch convergence port (Layer 4.1(a))
     and zero-branch lemma (Layer 4.1(b)).
+
+    **FIXME (session 76) — structural semantics gap.** Even after the
+    `σ_r* = ρ^L` spec fix, the *iff* form below is **not provable as
+    stated** because the backward direction fails in two regimes:
+
+      * `ρ_r* = 0`: by `sigma_zero_branch_constant`, `σ_r ≡ σ_r(0) =
+        ε^{1/L} > 0`, so `σ_r` DOES approach a strictly positive
+        asymptote (namely `ε^{1/L}`). This violates the iff.
+      * `ρ_r* < 0` with even `L`: `(ρ_r*)^L > 0`; while the negative
+        branch ensures `σ_r ≤ σ_r(0)`, the iff matches an asymptote
+        at the specific value `(ρ_r*)^L` which is independent of σ_r's
+        actual behaviour.
+
+    Two refactors are possible (require user input on framing):
+      (a) Replace `HasPositiveAsymptote` with concrete
+          `Filter.Tendsto sigma atTop (nhds ((eb.pairs r).rho ^ L))`
+          AND restrict the iff to ρ ≥ 0 (or strengthen RHS to demand
+          asymptote *strictly larger than* σ_r(0)).
+      (b) Reformulate as one-directional: `0 < ρ_r* → Tendsto σ_r
+          atTop (nhds ((eb.pairs r).rho ^ L))` (pure forward); negative
+          and zero cases handled via separate forward lemmas.
+
+    Either way, the current signature also needs ODE hypotheses
+    (`hSigma_pos`, `hSigma_below`, `hSigma_cont`, `hSigma_ode`) to make
+    the conclusion derivable from `sigma_positive_branch_converges`.
+    Defer until after Aristotle 22e700ca lands.
 -/
 theorem sign_identification_pos_iff_asymptote
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
@@ -87,7 +119,7 @@ theorem sign_identification_pos_iff_asymptote
     (sigma : ℝ → ℝ)
     (HasPositiveAsymptote : (ℝ → ℝ) → ℝ → Prop)
     (sigma_star : ℝ)
-    (h_sigma_star_def : sigma_star = Real.sqrt ((eb.pairs r).rho * (eb.pairs r).mu)) :
+    (h_sigma_star_def : sigma_star = (eb.pairs r).rho ^ L) :
     (0 < (eb.pairs r).rho ↔ HasPositiveAsymptote sigma sigma_star) := by
   sorry
 
@@ -125,7 +157,32 @@ theorem signed_recovery_pos_magnitude
     ∃ (rho_hat : ℝ → ℝ) (C : ℝ), 0 < C ∧
       ∀ ε : ℝ, 0 < ε → ε < Real.exp (-1) →
         |rho_hat ε - (eb.pairs r).rho| ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
-  sorry
+  -- Re-export of Layer 2.2 `rho_hat_rate` with `lambda := ρ·μ`, `rho := ρ`.
+  -- The Laurent hypothesis matches `rho_hat_rate`'s shape verbatim under that
+  -- substitution. `rho_hat_rate` returns the bound on `(0, ε_0)` for some
+  -- `ε_0 ∈ (0, 1)`; the requested conclusion ranges over `(0, exp(-1))`. We
+  -- bridge the mismatch by piecewise-defining `rho_hat` to equal `ρ` outside
+  -- the `ε_0` window, making the LHS exactly zero there.
+  have hlam_pos : 0 < (eb.pairs r).rho * (eb.pairs r).mu :=
+    mul_pos hrho_pos (eb.pairs r).hmu_pos
+  obtain ⟨ε_0, C, hε_0_pos, _hε_0_lt_one, hC_pos, hbound⟩ :=
+    rho_hat_rate L hL ((eb.pairs r).rho * (eb.pairs r).mu) (eb.pairs r).rho
+      hrho_pos hlam_pos t_crit K_log hK_log_pos h_laurent
+  refine ⟨fun ε =>
+    if ε < ε_0 then
+      ((L : ℝ) /
+          (((eb.pairs r).rho * (eb.pairs r).mu) * t_crit ε * ε ^ ((1 : ℝ) / L)))
+        ^ ((1 : ℝ) / (2 * (L : ℝ) - 2))
+    else (eb.pairs r).rho,
+    C, hC_pos, ?_⟩
+  intro ε hε_pos _hε_lt
+  by_cases h : ε < ε_0
+  · simp only [if_pos h]
+    exact hbound ε hε_pos h
+  · simp only [if_neg h, sub_self, abs_zero]
+    have hlog : 0 ≤ |Real.log ε| := abs_nonneg _
+    have hpow : 0 ≤ ε ^ ((1 : ℝ) / L) := Real.rpow_nonneg hε_pos.le _
+    positivity
 
 /-! ## §4.2(iii) — Negative-magnitude obstruction -/
 

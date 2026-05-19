@@ -45,6 +45,7 @@ breaking paper 1 builds. Re-evaluate after Layer 2.1 lands.
 | `JepaRhoRecovery/Ordering.lean` | Layer 1.2 — non-vacuous feature ordering |
 | `JepaRhoRecovery/DiagonalODE.lean` | Layer 2.1 — generalised diagonal ODE reduction |
 | `JepaRhoRecovery/Inversion.lean` | Layer 2.2 — identifiability inversion formula |
+| `JepaRhoRecovery/CriticalTime.lean` | `hittingTime` + `bernoulli_laurent_bound` (2 transplanted named sorries) + `actual_critical_time_signed` — paper-1 lineage, no Lake dep |
 | `JepaRhoRecovery/SampleNoise.lean` | Layer 3.1 — perturbation under sample covariance |
 | `JepaRhoRecovery/FiniteSample.lean` | Layer 3.2 — end-to-end finite-sample rate |
 | `JepaRhoRecovery/SignedODE.lean` | Layer 4.1 — signed-$\rho$ ODE analysis |
