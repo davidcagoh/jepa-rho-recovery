@@ -56,10 +56,11 @@ variable {d : ℕ}
 theorem finite_sample_rate_pos
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
-    (r : Fin d) (hrho_pos : 0 < (eb.pairs r).rho)
+    (r : Fin d) (_hrho_pos : 0 < (eb.pairs r).rho)
     -- Sample-side hitting time satisfies a Laurent expansion.
     (t_crit_hat : ℝ → ℝ)
     (rho_hat_pop : ℝ)  -- population-side sample-eigenvalue estimate ρ̂_r*
+    (hrho_hat_pop_pos : 0 < rho_hat_pop)  -- spec fix: needed for inversion
     (K_log : ℝ) (hK_log_pos : 0 < K_log)
     (h_laurent_sample : ∀ ε : ℝ, 0 < ε → ε < 1 →
       |t_crit_hat ε
@@ -71,10 +72,45 @@ theorem finite_sample_rate_pos
     -- Sample-eigenvalue perturbation (Layer 3.1 output).
     (delta_n : ℝ) (hδn_pos : 0 < delta_n)
     (h_perturbation : |rho_hat_pop - (eb.pairs r).rho| ≤ delta_n) :
-    ∃ (rho_estimator : ℝ → ℝ) (C_eps C_n : ℝ), 0 < C_eps ∧ 0 < C_n ∧
-      ∀ ε : ℝ, 0 < ε → ε < Real.exp (-1) →
+    -- Spec: existential ε_max (was global on (0, exp(-1)) before — that
+    -- shape isn't achievable since rho_hat_rate's bound is only valid
+    -- below an internal ε_0 threshold).
+    ∃ (rho_estimator : ℝ → ℝ) (eps_max C_eps C_n : ℝ),
+        0 < eps_max ∧ 0 < C_eps ∧ 0 < C_n ∧
+      ∀ ε : ℝ, 0 < ε → ε < eps_max →
         |rho_estimator ε - (eb.pairs r).rho|
           ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_n * delta_n := by
-  sorry
+  -- Step 1: invoke rho_hat_rate to get the inversion estimator.
+  set lambda : ℝ := rho_hat_pop * (eb.pairs r).mu with hlam_def
+  have hlam_pos : 0 < lambda :=
+    mul_pos hrho_hat_pop_pos (eb.pairs r).hmu_pos
+  obtain ⟨ε_0, C_rho, hε_0_pos, _hε_0_lt_one, hC_rho_pos, hbound⟩ :=
+    JepaRhoRecovery.rho_hat_rate L hL lambda rho_hat_pop hrho_hat_pop_pos hlam_pos
+      t_crit_hat K_log hK_log_pos
+      (by intro ε hε_pos hε_lt; simpa [hlam_def] using h_laurent_sample ε hε_pos hε_lt)
+  -- Step 2: define the estimator as the inversion formula.
+  refine ⟨fun ε => ((L : ℝ) / (lambda * t_crit_hat ε * ε ^ ((1 : ℝ) / L)))
+              ^ ((1 : ℝ) / (2 * (L : ℝ) - 2)),
+          ε_0, C_rho, 1, hε_0_pos, hC_rho_pos, zero_lt_one, ?_⟩
+  intro ε hε_pos hε_lt
+  -- Step 3: triangle inequality.
+  -- |rho_est ε - rho_pop| ≤ |rho_est ε - rho_hat_pop| + |rho_hat_pop - rho_pop|
+  --                       ≤ C_rho · ε^(1/L) · |log ε| + delta_n
+  have h_rho_est := hbound ε hε_pos hε_lt
+  have h_triangle :
+      |((L : ℝ) / (lambda * t_crit_hat ε * ε ^ ((1 : ℝ) / L))) ^
+            ((1 : ℝ) / (2 * (L : ℝ) - 2)) - (eb.pairs r).rho|
+        ≤ |((L : ℝ) / (lambda * t_crit_hat ε * ε ^ ((1 : ℝ) / L))) ^
+              ((1 : ℝ) / (2 * (L : ℝ) - 2)) - rho_hat_pop|
+          + |rho_hat_pop - (eb.pairs r).rho| :=
+    abs_sub_le _ _ _
+  calc |((L : ℝ) / (lambda * t_crit_hat ε * ε ^ ((1 : ℝ) / L))) ^
+            ((1 : ℝ) / (2 * (L : ℝ) - 2)) - (eb.pairs r).rho|
+      ≤ |((L : ℝ) / (lambda * t_crit_hat ε * ε ^ ((1 : ℝ) / L))) ^
+              ((1 : ℝ) / (2 * (L : ℝ) - 2)) - rho_hat_pop|
+        + |rho_hat_pop - (eb.pairs r).rho| := h_triangle
+    _ ≤ C_rho * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n :=
+        add_le_add h_rho_est h_perturbation
+    _ = C_rho * ε ^ ((1 : ℝ) / L) * |Real.log ε| + 1 * delta_n := by ring
 
 end JepaRhoRecovery

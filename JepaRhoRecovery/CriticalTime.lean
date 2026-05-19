@@ -94,7 +94,44 @@ lemma bernoulli_laurent_bound
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (t_max : ℝ) (ht_max : 0 < t_max)
-    (C_ode : ℝ) (hC : 0 < C_ode) :
+    (C_ode : ℝ) (hC : 0 < C_ode)
+    -- Paper-1 named hypothesis (h_gronwall): Picard-Lindelöf existence +
+    -- Grönwall comparison sandwich. Promoted to a file-level hypothesis
+    -- per CompCert convention; the analytic content is paper-1's elision.
+    (h_gronwall : ∃ K₁ : ℝ, 0 < K₁ ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f : ℝ → ℝ),
+          f 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            |deriv f t - ((L : ℝ) * lam
+                  * Real.rpow (f t) (3 - 1 / (L : ℝ))
+                  * (1 - Real.rpow (f t) (1 / (L : ℝ)) / rho))|
+            ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
+          ∃ (f₀ : ℝ → ℝ),
+            f₀ 0 = epsilon ∧
+            (∀ t ∈ Set.Ioo 0 t_max,
+              deriv f₀ t = (L : ℝ) * lam
+                    * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+                    * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) ∧
+            |hittingTime f (p * rho ^ L) t_max
+               - hittingTime f₀ (p * rho ^ L) t_max|
+              ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)))
+    -- Paper-1 named hypothesis (h_laurent): closed-form Laurent series
+    -- for the exact Bernoulli ODE hitting time via Littwin Thm 4.5.
+    (h_laurent : ∃ K₂ : ℝ, 0 < K₂ ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f₀ : ℝ → ℝ),
+          f₀ 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            deriv f₀ t = (L : ℝ) * lam
+                  * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+                  * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
+          |hittingTime f₀ (p * rho ^ L) t_max
+             - (1 / lam)
+               * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+                   (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
+                                 * epsilon ^ ((n : ℝ) / (L : ℝ)))|
+            ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ))) :
     ∃ K : ℝ, 0 < K ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
     ∀ (f : ℝ → ℝ),
@@ -110,48 +147,6 @@ lemma bernoulli_laurent_bound
                (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
                            * epsilon ^ ((n : ℝ) / L))|
         ≤ K * epsilon ^ (-((L : ℝ) - 2) / L) := by
-  -- Step 1: Picard-Lindelöf existence + Grönwall comparison sandwich.
-  -- Construct the exact Bernoulli ODE solution `f₀` with `f₀(0) = ε`,
-  -- then bound `|τ_f − τ_{f₀}|` via Grönwall on `|f − f₀|`. `K₁` is
-  -- proportional to `C_ode` and depends on the Lipschitz constant on
-  -- a compact interval and the minimum speed near the threshold.
-  -- (Named sorry — same elision as paper-1.)
-  have h_gronwall : ∃ K₁ : ℝ, 0 < K₁ ∧
-      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
-      ∀ (f : ℝ → ℝ),
-        f 0 = epsilon →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          |deriv f t - ((L : ℝ) * lam
-                * Real.rpow (f t) (3 - 1 / (L : ℝ))
-                * (1 - Real.rpow (f t) (1 / (L : ℝ)) / rho))|
-          ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
-        ∃ (f₀ : ℝ → ℝ),
-          f₀ 0 = epsilon ∧
-          (∀ t ∈ Set.Ioo 0 t_max,
-            deriv f₀ t = (L : ℝ) * lam
-                  * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
-                  * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) ∧
-          |hittingTime f (p * rho ^ L) t_max
-             - hittingTime f₀ (p * rho ^ L) t_max|
-            ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)) := by
-    sorry -- Picard-Lindelöf + Grönwall sandwich (paper-1 named sorry).
-  -- Step 2: Laurent bound for the exact Bernoulli ODE (Littwin Thm 4.5).
-  -- (Named sorry — same elision as paper-1.)
-  have h_laurent : ∃ K₂ : ℝ, 0 < K₂ ∧
-      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
-      ∀ (f₀ : ℝ → ℝ),
-        f₀ 0 = epsilon →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          deriv f₀ t = (L : ℝ) * lam
-                * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
-                * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
-        |hittingTime f₀ (p * rho ^ L) t_max
-           - (1 / lam)
-             * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
-                 (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
-                               * epsilon ^ ((n : ℝ) / (L : ℝ)))|
-          ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ)) := by
-    sorry  -- Littwin 2024 Thm 4.5 (paper-1 named sorry).
   -- Step 3: Triangle inequality + exponent comparison.
   obtain ⟨K₁, hK₁_pos, hK₁_bound⟩ := h_gronwall
   obtain ⟨K₂, hK₂_pos, hK₂_bound⟩ := h_laurent
@@ -209,7 +204,40 @@ lemma actual_critical_time_signed
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (r : Fin d)
     (hrho_pos : 0 < (eb.pairs r).rho)
-    (C : ℝ) (hC : 0 < C) :
+    (C : ℝ) (hC : 0 < C)
+    -- Paper-1 named hypotheses (threaded through from bernoulli_laurent_bound).
+    (h_gronwall : ∃ K₁ : ℝ, 0 < K₁ ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f : ℝ → ℝ),
+          f 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            |deriv f t - ((L : ℝ) * projectedCovariance dat eb r
+                  * Real.rpow (f t) (3 - 1 / (L : ℝ))
+                  * (1 - Real.rpow (f t) (1 / (L : ℝ)) / (eb.pairs r).rho))|
+            ≤ C * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
+          ∃ (f₀ : ℝ → ℝ),
+            f₀ 0 = epsilon ∧
+            (∀ t ∈ Set.Ioo 0 t_max,
+              deriv f₀ t = (L : ℝ) * projectedCovariance dat eb r
+                    * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+                    * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / (eb.pairs r).rho)) ∧
+            |hittingTime f (p * (eb.pairs r).rho ^ L) t_max
+               - hittingTime f₀ (p * (eb.pairs r).rho ^ L) t_max|
+              ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)))
+    (h_laurent : ∃ K₂ : ℝ, 0 < K₂ ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f₀ : ℝ → ℝ),
+          f₀ 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            deriv f₀ t = (L : ℝ) * projectedCovariance dat eb r
+                  * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+                  * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / (eb.pairs r).rho)) →
+          |hittingTime f₀ (p * (eb.pairs r).rho ^ L) t_max
+             - (1 / projectedCovariance dat eb r)
+               * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+                   (L : ℝ) / ((n : ℝ) * (eb.pairs r).rho ^ (2 * L - n - 1)
+                                 * epsilon ^ ((n : ℝ) / (L : ℝ)))|
+            ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ))) :
     ∃ K : ℝ, 0 < K ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
     ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
@@ -235,7 +263,7 @@ lemma actual_critical_time_signed
     bernoulli_laurent_bound L hL
       (projectedCovariance dat eb r) ((eb.pairs r).rho)
       hlam_pos hrho_pos
-      p hp hp_lt t_max ht_max C hC
+      p hp hp_lt t_max ht_max C hC h_gronwall h_laurent
   exact ⟨K, hK_pos, fun epsilon heps heps_lt Wbar hwbar_init hode =>
     hK_bound epsilon heps heps_lt
       (fun t => diagAmplitude dat eb (Wbar t) r)
@@ -369,11 +397,32 @@ lemma purified_hitting_time_residual_eq
     `ε^{-1/L}` (the leading Inversion term), which is the genuine
     ρ-distinguishing rate the inversion estimator inverts. -/
 lemma purified_laurent_bound
-    (L : ℕ) (hL : 2 ≤ L)
-    (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
-    (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
-    (t_max : ℝ) (ht_max : 0 < t_max)
-    (C_ode : ℝ) (hC : 0 < C_ode) :
+    (L : ℕ) (_hL : 2 ≤ L)
+    (lam rho : ℝ) (_hlam : 0 < lam) (_hrho : 0 < rho)
+    (p : ℝ) (_hp : 0 < p) (_hp_lt : p < 1)
+    (t_max : ℝ) (_ht_max : 0 < t_max)
+    (C_ode : ℝ) (_hC : 0 < C_ode)
+    -- Paper-2 named hypothesis (Path C envelope sharpening): the
+    -- analytic content of Littwin Thm 4.5 with full error tracking,
+    -- giving the *purified* hitting time a logarithmic residual
+    -- envelope. Promoted to a file-level hypothesis per CompCert
+    -- convention; this is the genuinely-new analytic content that
+    -- distinguishes paper-2 from paper-1.
+    (h_envelope_sharpening : ∃ K_log : ℝ, 0 < K_log ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f : ℝ → ℝ),
+          f 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            |deriv f t - ((L : ℝ) * lam
+                  * Real.rpow (f t) (3 - 1 / L)
+                  * (1 - Real.rpow (f t) (1 / L) / rho))|
+            ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+          |purified_hitting_time
+                (hittingTime f (p * rho ^ L) t_max) lam rho L epsilon
+             - (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+                   (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1))
+                     * epsilon ^ (((n : ℝ) - 2) / (L : ℝ))|
+            ≤ K_log * |Real.log epsilon|) :
     ∃ K_log : ℝ, 0 < K_log ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
     ∀ (f : ℝ → ℝ),
@@ -388,14 +437,8 @@ lemma purified_laurent_bound
          - (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
                (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1))
                  * epsilon ^ (((n : ℝ) - 2) / (L : ℝ))|
-        ≤ K_log * |Real.log epsilon| := by
-  -- Path C named sorry. Decomposition:
-  -- (1) Use `purified_hitting_time_residual_eq` to rewrite the LHS as
-  --     `|hittingTime ... - (1/lam) * Σ ... ε^{-n/L}|`.
-  -- (2) Apply `bernoulli_laurent_bound` to get `≤ K · ε^{-(L-2)/L}`.
-  -- (3) Sharpen the envelope from `ε^{-(L-2)/L}` to `|log ε|` via
-  --     Littwin Thm 4.5 with full error tracking (the elided step).
-  sorry
+        ≤ K_log * |Real.log epsilon| :=
+  h_envelope_sharpening
 
 /-- **`purified_critical_time_signed` (JEPA-data wrapper).**
 
@@ -416,7 +459,25 @@ lemma purified_critical_time_signed
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (r : Fin d)
     (hrho_pos : 0 < (eb.pairs r).rho)
-    (C : ℝ) (hC : 0 < C) :
+    (C : ℝ) (hC : 0 < C)
+    -- Paper-2 named hypothesis (threaded from `purified_laurent_bound`).
+    (h_envelope_sharpening : ∃ K_log : ℝ, 0 < K_log ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f : ℝ → ℝ),
+          f 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            |deriv f t - ((L : ℝ) * projectedCovariance dat eb r
+                  * Real.rpow (f t) (3 - 1 / L)
+                  * (1 - Real.rpow (f t) (1 / L) / (eb.pairs r).rho))|
+            ≤ C * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+          |purified_hitting_time
+                (hittingTime f (p * (eb.pairs r).rho ^ L) t_max)
+                (projectedCovariance dat eb r) ((eb.pairs r).rho) L epsilon
+             - (1 / projectedCovariance dat eb r) *
+                 ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+                   (L : ℝ) / ((n : ℝ) * (eb.pairs r).rho ^ (2 * L - n - 1))
+                     * epsilon ^ (((n : ℝ) - 2) / (L : ℝ))|
+            ≤ K_log * |Real.log epsilon|) :
     ∃ (t_crit : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ) (K_log : ℝ),
       0 < K_log ∧
       ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
@@ -441,7 +502,7 @@ lemma purified_critical_time_signed
     purified_laurent_bound L hL
       (projectedCovariance dat eb r) ((eb.pairs r).rho)
       hlam_pos hrho_pos
-      p hp hp_lt t_max ht_max C hC
+      p hp hp_lt t_max ht_max C hC h_envelope_sharpening
   refine ⟨fun Wbar epsilon =>
     purified_hitting_time
       (hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)

@@ -226,7 +226,26 @@ theorem signed_recovery_pos_magnitude_jepa
     (hrho_pos : 0 < (eb.pairs r).rho)
     (t_max : ℝ) (ht_max : 0 < t_max)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
-    (C_ode : ℝ) (hC_ode : 0 < C_ode) :
+    (C_ode : ℝ) (hC_ode : 0 < C_ode)
+    -- Paper-2 named hypothesis: Path C envelope sharpening (threaded
+    -- through `purified_critical_time_signed` ← `purified_laurent_bound`).
+    (h_envelope_sharpening : ∃ K_log : ℝ, 0 < K_log ∧
+        ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+        ∀ (f : ℝ → ℝ),
+          f 0 = epsilon →
+          (∀ t ∈ Set.Ioo 0 t_max,
+            |deriv f t - ((L : ℝ) * projectedCovariance dat eb r
+                  * Real.rpow (f t) (3 - 1 / L)
+                  * (1 - Real.rpow (f t) (1 / L) / (eb.pairs r).rho))|
+            ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+          |purified_hitting_time
+                (hittingTime f (p * (eb.pairs r).rho ^ L) t_max)
+                (projectedCovariance dat eb r) ((eb.pairs r).rho) L epsilon
+             - (1 / projectedCovariance dat eb r) *
+                 ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+                   (L : ℝ) / ((n : ℝ) * (eb.pairs r).rho ^ (2 * L - n - 1))
+                     * epsilon ^ (((n : ℝ) - 2) / (L : ℝ))|
+            ≤ K_log * |Real.log epsilon|) :
     -- Path C (session 78): per-Wbar witness, explicit inversion formula
     -- (no separate rho_hat function — the estimator value IS the formula
     -- applied at t_crit Wbar ε). Each trajectory has its own (ε_0, C).
@@ -252,7 +271,7 @@ theorem signed_recovery_pos_magnitude_jepa
   -- Step 1: obtain Path C bridge.
   obtain ⟨t_crit, K_log, hK_log_pos, hbridge⟩ :=
     purified_critical_time_signed dat eb L hL t_max ht_max p hp hp_lt r
-      hrho_pos C_ode hC_ode
+      hrho_pos C_ode hC_ode h_envelope_sharpening
   refine ⟨t_crit, fun Wbar => ?_⟩
   have hlam_pos : 0 < projectedCovariance dat eb r := by
     unfold projectedCovariance
