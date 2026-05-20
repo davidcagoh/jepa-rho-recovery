@@ -388,4 +388,227 @@ theorem signed_recovery_neg_magnitude_obstruction
   · exact sigma_negative_branch_le_init L hL (-1) (-2) (by norm_num) (by norm_num)
       t_max ht_max sigma₂ hPos₂ hCont₂ hODE₂ t ht
 
+/-! ## §4.1-bridge — Trajectory → plateau-rate hypothesis (paper Thm 5.1′ bridge)
+
+    Bridges the qualitative `sigma_positive_branch_converges` (Aristotle
+    `22e700ca`) to the QUANTITATIVE plateau-approach bound consumed by
+    `PlateauEstimator.rho_hat_plateau_rate`. Pure ODE work: Lyapunov-style
+    rate of approach to the fixed point ρ^L. -/
+
+/-- **Bridge to plateau estimator (paper Thm 5.1′ feeder).**
+
+    For each ε ∈ (0,1), `sigma ε : ℝ → ℝ` is a positive-branch trajectory
+    of the diagonal Bernoulli ODE with initial condition ≤ ε and lying
+    strictly below the plateau (ρ^L). The bridge produces:
+      * a time-of-observation function `T : ℝ → ℝ` (positive for each ε),
+      * a uniform constant `K_plateau > 0`,
+    such that the trajectory at the chosen time is within
+    `K_plateau · ε^{1/L} · |log ε|` of the plateau.
+
+    PROVIDED SOLUTION (3 phases):
+
+    Phase 1 — growth from ε to ρ^L/2. For σ ≪ ρ^L the μσ³ term is
+    subleading; integrating σ̇ = λσ^{3-1/L} gives
+    σ(t)^{-(2L-1)/L} = σ(0)^{-(2L-1)/L} - ((2L-1)/L)·λ·t. Reaching
+    σ = ρ^L/2 takes time `t_grow(ε) = O(ε^{-(2L-1)/L})` (explicit:
+    `(L/((2L-1)λ)) · (ε^{-(2L-1)/L} - (ρ^L/2)^{-(2L-1)/L})`).
+
+    Phase 2 — exponential approach on [σ ∈ [ρ^L/2, ρ^L)]. Define the
+    Lyapunov function V(t) := ρ^L - σ(t) ≥ 0. Compute
+        V̇ = -σ̇ = -[λσ^{3-1/L} - μσ³] = -σ^{3-1/L}·(λ - μσ^{1/L}).
+    For σ ∈ [ρ^L/2, ρ^L), σ^{1/L} ∈ [ρ/2^{1/L}, ρ), so
+        λ - μσ^{1/L} = μ(ρ - σ^{1/L}) ≥ μ · V/(L·ρ^{L-1})  (Lipschitz of
+        x ↦ x^{1/L} near ρ^L, factored through V).
+    Combined with σ^{3-1/L} ≥ (ρ^L/2)^{3-1/L}, this gives
+        V̇ ≤ -c·V,  where c := μ·(ρ^L/2)^{3-1/L}/(L·ρ^{L-1}) > 0.
+    Grönwall: V(t) ≤ V(t_grow)·exp(-c·(t - t_grow)) ≤ ρ^L·exp(-c·(t-t_grow)).
+
+    Phase 3 — choose T(ε). Solve ρ^L·exp(-c·(T - t_grow)) ≤ ε^{1/L}·|log ε|:
+        T(ε) := t_grow(ε) + c⁻¹·log(ρ^L / (ε^{1/L}·|log ε|)).
+    For ε ∈ (0,1), |log ε| > 0 so the second term is well-defined and
+    positive for ε sufficiently small; for the remaining range push T
+    larger uniformly. K_plateau := 1 (the bound holds tight by construction).
+
+    Mathlib hooks: `Real.hasDerivAt_rpow_const`, `gronwallBound`,
+    `mvt_eq` or `Convex.norm_image_sub_le_of_norm_deriv_le_segment`.
+
+    VACUITY DISCIPLINE. K_plateau > 0 and T(ε) > 0 are forced existentials.
+    The trajectory `sigma` is a free function constrained by the ODE,
+    positivity, sub-plateau bound, continuity, and initial condition —
+    a degenerate witness would require all five to be vacuously true
+    (impossible since `hSigma_below` forces `σ < ρ^L` everywhere, while
+    `hSigma_init` forces `σ(0) ≤ ε`). -/
+theorem signed_recovery_pos_magnitude_plateau
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_below : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t →
+        sigma ε t < (lambda / mu) ^ L)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 ≤ ε) :
+    ∃ T : ℝ → ℝ, ∃ K_plateau : ℝ, 0 < K_plateau ∧
+      (∀ ε : ℝ, 0 < ε → ε < 1 → 0 < T ε) ∧
+      (∀ ε : ℝ, 0 < ε → ε < 1 →
+        |sigma ε (T ε) - (lambda / mu) ^ L|
+          ≤ K_plateau * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
+  sorry
+
+/-! ## §4.1-bridge — Trajectory → early-slope ε^{(L+1)/L} perturbation
+    (paper Thm 5.2 bridge)
+
+    For the early-slope estimator, the μσ³ correction to the idealised
+    σ̇ = λσ^{3-1/L} dynamics is O(ε^{(L+1)/L}) on the early-time window
+    [0, t₀]. This is the corrected (post-counterexample, Aristotle
+    `95ddb6a0`) exponent. -/
+
+/-- **Bridge to early-slope estimator (paper Thm 5.2 feeder).**
+
+    For each ε ∈ (0,1), `sigma ε : ℝ → ℝ` is the positive-branch
+    Bernoulli trajectory with initial condition exactly ε. The bridge
+    produces a uniform constant `K_early > 0` such that the trajectory
+    at the early-observation time `t₀(ε) := c·λ⁻¹·ε^{-(2L-1)/L}` differs
+    from the idealised (μ=0) solution
+        σ_id(ε) := (ε^{-(2L-1)/L} - ((2L-1)/L)·λ·t₀(ε))^{-L/(2L-1)}
+    by at most `K_early · ε^{(L+1)/L} · |log ε|`.
+
+    PROVIDED SOLUTION (Grönwall on μ-term):
+
+    Step 1 — idealised solution on [0, t₀]. σ_id solves σ̇_id = λσ_id^{3-1/L}
+    with σ_id(0) = ε. Closed form (Bernoulli):
+        σ_id(t) = (ε^{-(2L-1)/L} - ((2L-1)/L)·λ·t)^{-L/(2L-1)}.
+    On [0, t₀] with c·(2L-1)/L < 1, σ_id stays in [ε, A·ε] where
+    A := (1 - c·(2L-1)/L)^{-L/(2L-1)} > 1.
+
+    Step 2 — δ := σ - σ_id satisfies a linear-in-δ ODE with a forcing
+    term proportional to μσ³. Specifically:
+        δ̇ = λ·(σ^{3-1/L} - σ_id^{3-1/L}) - μ·σ³
+            = λ·M(t)·δ - μ·σ³,
+    where M(t) := (σ^{3-1/L} - σ_id^{3-1/L})/(σ - σ_id) is the MVT slope
+    of x ↦ x^{3-1/L} on the segment between σ and σ_id (uniformly bounded
+    above on [0, t₀] by a constant times σ_id^{2-1/L} ≤ (Aε)^{2-1/L}).
+
+    Step 3 — Grönwall (linear). δ(0) = 0, so
+        |δ(t)| ≤ ∫₀^t μ·σ(s)³·exp(∫_s^t λ·M(τ)dτ) ds.
+    Since σ ≤ 2·σ_id ≤ 2Aε on [0, t₀] (apply ε small enough so the
+    perturbation stays half the idealised, an a posteriori check), and
+    the cumulative M integral is bounded:
+        ∫₀^{t₀} λ·M(τ) dτ ≤ const·λ·(Aε)^{2-1/L}·t₀
+            = const·λ·ε^{(2L-1)/L}·ε^{-(2L-1)/L} = const,
+    so exp(·) ≤ const.
+
+    Step 4 — final bound:
+        |δ(t₀)| ≤ const·μ·(2Aε)³·t₀ = const·με³·ε^{-(2L-1)/L}
+              = const·ε^{(L+1)/L}.
+    The |log ε| factor comes from the const itself (loose bookkeeping
+    via `eps_rpow_log_eventually_small`-style estimates that turn
+    polynomial bounds into ε^{(L+1)/L}·|log ε|).
+    K_early := the assembled constant; > 0.
+
+    Mathlib hooks: `gronwallBound` or hand-written Grönwall on
+    `‖δ(t)‖ ≤ ∫₀^t a(s)‖δ(s)‖ + b(s) ds`, plus
+    `Real.hasDerivAt_rpow_const`.
+
+    VACUITY. K_early > 0 forced. The positivity output
+    `0 < sigma ε (t₀ ε)` is forced by `hSigma_pos`. The trajectory is
+    constrained by ODE + positivity + initial condition, so a degenerate
+    witness would require contradicting the IC `sigma ε 0 = ε`. -/
+theorem early_slope_perturbation_pos
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (c : ℝ) (hc_pos : 0 < c) (hc_lt_one : c < 1)
+    (hc_small : c * ((2 * (L : ℝ) - 1) / (L : ℝ)) < 1)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
+    ∃ K_early : ℝ, 0 < K_early ∧
+      ∀ ε : ℝ, 0 < ε → ε < 1 →
+        0 < sigma ε (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L)) ∧
+        |sigma ε (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L))
+          - Real.rpow (ε ^ (-(2 * (L : ℝ) - 1) / L)
+                      - ((2 * (L : ℝ) - 1) / L) * lambda
+                          * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L)))
+                      (-(L : ℝ) / (2 * (L : ℝ) - 1))|
+          ≤ K_early * ε ^ (((L : ℝ) + 1) / (L : ℝ)) * |Real.log ε| := by
+  sorry
+
+/-! ## §7.3 — Negative-branch λ-rate from late-time decay (paper Thm 7.3 part 1)
+
+    For the negative branch (λ < 0, ρ = λ/μ < 0 ⇒ μ > 0), σ_r DECAYS as
+    a power law. The leading-order late-time behaviour is
+        σ_r(t) ∼ (((2L-1)/L)·|λ|·t)^{-L/(2L-1)}.
+    A curve-fit estimator recovers |λ| at rate O(ε^{1/L}).
+
+    NOTE: paper Thm 7.3 part 1 only. Part 2 (μ-rate suboptimality) is an
+    information-theoretic lower bound, deferred (paper-3 territory). -/
+
+/-- **Negative-branch λ-rate (paper Thm 7.3 part 1).**
+
+    For each ε ∈ (0,1), the negative-branch trajectory `sigma ε : ℝ → ℝ`
+    solves the Bernoulli ODE with λ < 0, μ > 0, and initial condition ε.
+    The curve-fit estimator
+        λ̂(ε, t) := -(L/(2L-1))·sigma ε t ^{-(2L-1)/L} / t
+    recovers |λ| at rate O(ε^{1/L}) for an appropriately chosen
+    observation time T(ε).
+
+    PROVIDED SOLUTION (decay analysis, mirror of early-slope):
+
+    Step 1 — closed-form idealised decay. With μ = 0, σ̇ = λσ^{3-1/L} and
+    λ < 0 gives σ_id(t) = (ε^{-(2L-1)/L} + ((2L-1)/L)·|λ|·t)^{-L/(2L-1)}.
+    At late time t ≫ ε^{-(2L-1)/L}/|λ|: σ_id(t) ≈ (((2L-1)/L)·|λ|·t)^{-L/(2L-1)}.
+    Idealised inversion: |λ̂_id(ε, t)| = (L/(2L-1))·σ_id(t)^{-(2L-1)/L}/t.
+
+    Step 2 — μ-perturbation on the negative branch. The μσ³ term is
+    SUBLEADING for the decaying trajectory (σ → 0): μσ³/|λ|σ^{3-1/L} =
+    (μ/|λ|)·σ^{1/L} → 0. Grönwall gives δ := σ - σ_id bounded by a
+    similar O(ε^{(L+1)/L}) calculation as `early_slope_perturbation_pos`
+    on the appropriate late-time window.
+
+    Step 3 — choose T(ε). Take T(ε) := c·|λ|⁻¹·ε^{-(2L-1)/L} for some
+    c > 1 with c·(2L-1)/L > 1 (late-time, well past the transient).
+    Standard mean-value bound on x ↦ x^{-(2L-1)/L} transfers the
+    σ-perturbation to the inverse:
+        |λ̂ - |λ|| ≤ C · ε^{1/L}·|log ε|.
+
+    Step 4 — explicit constants. K_neg := assembled constant from
+    Step 3, > 0.
+
+    Reuse the abstract `lambda_hat_early_slope_rate` infrastructure:
+    the inversion formula structure is IDENTICAL (mean-value on a
+    Bernoulli inversion), only the sign and observation-time-regime
+    differ. Many helpers from `PlateauEstimator` apply directly.
+
+    VACUITY. K_neg > 0 and T(ε) > 0 forced. The negative-branch
+    constraint λ < 0 ∧ μ > 0 makes the ODE genuinely contractive
+    toward 0, so trajectories with initial condition ε > 0 decay
+    monotonically (cf. `sigma_negative_branch_antitone`). -/
+theorem signed_recovery_neg_lambda_rate
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_neg : lambda < 0) (hmu_pos : 0 < mu)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
+    ∃ T : ℝ → ℝ, ∃ K_neg : ℝ, 0 < K_neg ∧
+      (∀ ε : ℝ, 0 < ε → ε < 1 → 0 < T ε) ∧
+      (∀ ε : ℝ, 0 < ε → ε < 1 →
+        |(-((L : ℝ) / (2 * (L : ℝ) - 1)))
+            * Real.rpow (sigma ε (T ε)) (-(2 * (L : ℝ) - 1) / L) / T ε
+          - (-lambda)|
+          ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
+  sorry
+
 end JepaRhoRecovery
