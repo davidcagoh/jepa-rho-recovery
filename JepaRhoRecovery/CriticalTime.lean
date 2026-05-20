@@ -446,15 +446,27 @@ lemma purified_hitting_time_residual_eq
     and a `|log ε|` envelope — it does NOT admit `K_log = 0`. The
     statement constrains `purified_hitting_time` to scale as
     `ε^{-1/L}` (the leading Inversion term), which is the genuine
-    ρ-distinguishing rate the inversion estimator inverts. -/
+    ρ-distinguishing rate the inversion estimator inverts.
+
+    **Domain restriction (session 82).** The envelope bound holds only
+    for `ε < ε_max < 1` — near `ε = 1` we have `|log ε| → 0` while the
+    purified residual stays bounded below by `O(1)` because the
+    Laurent expansion is only meaningful in the small-`ε` asymptotic
+    regime (JEPA dynamics' initial-condition window). This matches
+    how all downstream consumers (`Inversion.rho_hat_rate`,
+    `SignedRecovery.signed_recovery_pos_magnitude`) already restrict
+    to `ε < exp(-1)` or `ε < ε_0 ∈ (0,1)`. The hypothesis
+    `(ε_max : ℝ) (hε_max : 0 < ε_max < 1)` is a free parameter; a
+    typical choice is `ε_max := exp(-1)`. -/
 lemma purified_laurent_bound
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (t_max : ℝ) (ht_max : 0 < t_max)
-    (C_ode : ℝ) (hC : 0 < C_ode) :
+    (C_ode : ℝ) (hC : 0 < C_ode)
+    (ε_max : ℝ) (hε_max_pos : 0 < ε_max) (hε_max_lt : ε_max < 1) :
     ∃ K_log : ℝ, 0 < K_log ∧
-    ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+    ∀ (epsilon : ℝ), 0 < epsilon → epsilon < ε_max →
     ∀ (f : ℝ → ℝ),
       f 0 = epsilon →
       (∀ t ∈ Set.Ioo 0 t_max,
@@ -495,11 +507,12 @@ lemma purified_critical_time_signed
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (r : Fin d)
     (hrho_pos : 0 < (eb.pairs r).rho)
-    (C : ℝ) (hC : 0 < C) :
+    (C : ℝ) (hC : 0 < C)
+    (ε_max : ℝ) (hε_max_pos : 0 < ε_max) (hε_max_lt : ε_max < 1) :
     ∃ (t_crit : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ) (K_log : ℝ),
       0 < K_log ∧
       ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
-      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < ε_max →
         diagAmplitude dat eb (Wbar 0) r = epsilon →
         (∀ t ∈ Set.Ioo 0 t_max,
           |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
@@ -521,6 +534,7 @@ lemma purified_critical_time_signed
       (projectedCovariance dat eb r) ((eb.pairs r).rho)
       hlam_pos hrho_pos
       p hp hp_lt t_max ht_max C hC
+      ε_max hε_max_pos hε_max_lt
   refine ⟨fun Wbar epsilon =>
     purified_hitting_time
       (hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
