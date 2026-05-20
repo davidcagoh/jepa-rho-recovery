@@ -97,20 +97,34 @@ inequality + exponent comparison from the three pieces above.
     full `Ioo 0 t_max` follows by maximal-solution continuation since
     the threshold `p · ρ^L` is strictly below `ρ^L` (the fixed point).
 
-    Named sorry — Mathlib's `ODE_solution_exists`-style lemma should
-    apply but the locally-Lipschitz packaging requires care. -/
-lemma bernoulli_exact_solution_exists
+    **Path C axiom** (promoted 2026-05-20 after Aristotle job `5fbe03d3`
+    came back COMPLETE_WITH_ERRORS; statement-honesty pass also 2026-05-20
+    added `p` parameter, continuity, pointwise differentiability, and
+    threshold reachability under a `t_max`-sufficient hypothesis). Standard
+    Picard-Lindelöf existence + maximal-solution continuation + a-priori
+    speed bound; cited as classical ODE theory. -/
+axiom bernoulli_exact_solution_exists
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
+    (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
     (t_max : ℝ) (ht_max : 0 < t_max)
-    (epsilon : ℝ) (heps : 0 < epsilon) (heps_lt : epsilon < 1) :
+    (epsilon : ℝ) (heps : 0 < epsilon) (heps_lt : epsilon < 1)
+    -- `t_max` large enough for the exact solution to reach `p·ρ^L`.
+    -- A coarse-but-sufficient bound is `(2L/(lam·ε^{(2L-1)/L})) ≤ t_max`,
+    -- matching the leading Laurent term `1/(lam·ε^{(2L-1)/L})` up to a
+    -- factor of 2.
+    (h_t_max_reach :
+      (2 * (L : ℝ)) / (lam * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)))
+        ≤ t_max) :
     ∃ (f₀ : ℝ → ℝ),
       f₀ 0 = epsilon ∧
+      ContinuousOn f₀ (Set.Icc 0 t_max) ∧
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f₀ t) ∧
       (∀ t ∈ Set.Ioo 0 t_max,
         deriv f₀ t = (L : ℝ) * lam
               * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
-              * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) := by
-  sorry -- Picard-Lindelöf existence (paper-1 named sorry, piece 1/3).
+              * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) ∧
+      hittingTime f₀ (p * rho ^ L) t_max < t_max
 
 /-- **(Piece 2/3) Grönwall comparison sandwich.**
 
@@ -126,8 +140,17 @@ lemma bernoulli_exact_solution_exists
     `C` and depending on the Lipschitz constant on the compact
     interval `[0, t_max]`.
 
-    Named sorry — paper-1 named sorry, piece 2/3. -/
-lemma bernoulli_gronwall_sandwich
+    **Path C axiom** (promoted 2026-05-20 after Aristotle job `f00f9f44`
+    came back COMPLETE_WITH_ERRORS; statement-honesty pass 2026-05-20
+    added continuity, pointwise differentiability, and reachability
+    hypotheses for both `f` and `f₀`). The original statement was
+    mathematically vacuous: if `f` reached the threshold and `f₀` did
+    not (hitting time defaulting to the `t_max + 1` sentinel), the
+    difference `|τ_f − τ_{f₀}|` could be Ω(1), contradicting the
+    `O(ε^{(2L-1)/L})` claim. The added hypotheses force both hitting
+    times into the interior, where the standard Grönwall ODE-comparison
+    + speed-lower-bound argument is honest. -/
+axiom bernoulli_gronwall_sandwich
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
@@ -138,6 +161,10 @@ lemma bernoulli_gronwall_sandwich
     ∀ (f f₀ : ℝ → ℝ),
       f 0 = epsilon →
       f₀ 0 = epsilon →
+      ContinuousOn f (Set.Icc 0 t_max) →
+      ContinuousOn f₀ (Set.Icc 0 t_max) →
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f t) →
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f₀ t) →
       (∀ t ∈ Set.Ioo 0 t_max,
         deriv f₀ t = (L : ℝ) * lam
               * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
@@ -147,10 +174,11 @@ lemma bernoulli_gronwall_sandwich
               * Real.rpow (f t) (3 - 1 / (L : ℝ))
               * (1 - Real.rpow (f t) (1 / (L : ℝ)) / rho))|
         ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
+      hittingTime f (p * rho ^ L) t_max < t_max →
+      hittingTime f₀ (p * rho ^ L) t_max < t_max →
       |hittingTime f (p * rho ^ L) t_max
          - hittingTime f₀ (p * rho ^ L) t_max|
-        ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)) := by
-  sorry -- Grönwall comparison sandwich (paper-1 named sorry, piece 2/3).
+        ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))
 
 /-- **(Piece 3/3) Closed-form Laurent expansion for the exact Bernoulli ODE.**
 
@@ -165,9 +193,15 @@ lemma bernoulli_gronwall_sandwich
     `1/(ψ^{2L} · (1 − ψ))` along the trajectory, then asymptotic
     expansion as ε → 0+.
 
-    Named sorry — paper-1 named sorry, piece 3/3. Independent of the
-    Grönwall side (pieces 1+2). -/
-lemma bernoulli_exact_laurent
+    **Path C axiom** (promoted 2026-05-20 after Aristotle job `d9780bba`
+    came back COMPLETE_WITH_ERRORS; statement-honesty pass 2026-05-20
+    added continuity, pointwise differentiability, and reachability
+    hypotheses for `f₀`). The original statement had the same vacuity
+    gap as `bernoulli_gronwall_sandwich` — if `f₀` failed to reach the
+    threshold, the LHS could be Ω(`t_max + 1`). Cited as Littwin 2024
+    Thm 4.5 (partial-fraction integration of `1/(ψ^{2L}·(1−ψ))`); see
+    paper §4.3. -/
+axiom bernoulli_exact_laurent
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
@@ -176,17 +210,19 @@ lemma bernoulli_exact_laurent
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
     ∀ (f₀ : ℝ → ℝ),
       f₀ 0 = epsilon →
+      ContinuousOn f₀ (Set.Icc 0 t_max) →
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f₀ t) →
       (∀ t ∈ Set.Ioo 0 t_max,
         deriv f₀ t = (L : ℝ) * lam
               * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
               * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
+      hittingTime f₀ (p * rho ^ L) t_max < t_max →
       |hittingTime f₀ (p * rho ^ L) t_max
          - (1 / lam)
            * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
                (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
                              * epsilon ^ ((n : ℝ) / (L : ℝ)))|
-        ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ)) := by
-  sorry -- Littwin 2024 Thm 4.5 (paper-1 named sorry, piece 3/3).
+        ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ))
 
 /-- **`bernoulli_laurent_bound` (scalar, positive branch).**
 
@@ -211,13 +247,21 @@ lemma bernoulli_laurent_bound
     (C_ode : ℝ) (hC : 0 < C_ode) :
     ∃ K : ℝ, 0 < K ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+    -- Statement-honesty: caller must witness `t_max` is large enough for
+    -- the exact Bernoulli solution to reach the threshold (matches the
+    -- Laurent leading-order time scale).
+    (2 * (L : ℝ)) / (lam * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)))
+        ≤ t_max →
     ∀ (f : ℝ → ℝ),
       f 0 = epsilon →
+      ContinuousOn f (Set.Icc 0 t_max) →
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f t) →
       (∀ t ∈ Set.Ioo 0 t_max,
         |deriv f t - ((L : ℝ) * lam
               * Real.rpow (f t) (3 - 1 / L)
               * (1 - Real.rpow (f t) (1 / L) / rho))|
         ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+      hittingTime f (p * rho ^ L) t_max < t_max →
       |hittingTime f (p * rho ^ L) t_max
          - (1 / lam)
            * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
@@ -232,14 +276,16 @@ lemma bernoulli_laurent_bound
     bernoulli_exact_laurent L hL lam rho hlam hrho p hp hp_lt
       t_max ht_max
   refine ⟨K₁ + K₂, by positivity, ?_⟩
-  intro epsilon heps heps_lt f hf0 hode
-  obtain ⟨f₀, hf₀_init, hf₀_ode⟩ :=
-    bernoulli_exact_solution_exists L hL lam rho hlam hrho
-      t_max ht_max epsilon heps heps_lt
+  intro epsilon heps heps_lt h_t_max_reach f hf0 hf_cont hf_diff hode h_reach_f
+  obtain ⟨f₀, hf₀_init, hf₀_cont, hf₀_diff, hf₀_ode, h_reach_f₀⟩ :=
+    bernoulli_exact_solution_exists L hL lam rho hlam hrho p hp hp_lt
+      t_max ht_max epsilon heps heps_lt h_t_max_reach
   have h_gronwall_bd :=
-    hK₁_bound epsilon heps heps_lt f f₀ hf0 hf₀_init hf₀_ode hode
+    hK₁_bound epsilon heps heps_lt f f₀ hf0 hf₀_init hf_cont hf₀_cont
+      hf_diff hf₀_diff hf₀_ode hode h_reach_f h_reach_f₀
   have h_laurent_bd :=
-    hK₂_bound epsilon heps heps_lt f₀ hf₀_init hf₀_ode
+    hK₂_bound epsilon heps heps_lt f₀ hf₀_init hf₀_cont hf₀_diff hf₀_ode
+      h_reach_f₀
   set S := (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
       (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1) * epsilon ^ ((n : ℝ) / (L : ℝ)))
     with hS_def
@@ -291,8 +337,15 @@ lemma actual_critical_time_signed
     (C : ℝ) (hC : 0 < C) :
     ∃ K : ℝ, 0 < K ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+    -- Statement-honesty: `t_max` large enough for the exact Bernoulli
+    -- analogue to reach the threshold.
+    (2 * (L : ℝ)) / (projectedCovariance dat eb r
+        * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max →
     ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
       diagAmplitude dat eb (Wbar 0) r = epsilon →
+      ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r) (Set.Icc 0 t_max) →
+      (∀ t ∈ Set.Ioo 0 t_max,
+        DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) →
       (∀ t ∈ Set.Ioo 0 t_max,
         |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
          - ((L : ℝ) * projectedCovariance dat eb r
@@ -300,6 +353,8 @@ lemma actual_critical_time_signed
               * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L)
                      / (eb.pairs r).rho))|
         ≤ C * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+      hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
+                  (p * (eb.pairs r).rho ^ L) t_max < t_max →
       |hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
                     (p * (eb.pairs r).rho ^ L) t_max
          - (1 / projectedCovariance dat eb r)
@@ -315,10 +370,11 @@ lemma actual_critical_time_signed
       (projectedCovariance dat eb r) ((eb.pairs r).rho)
       hlam_pos hrho_pos
       p hp hp_lt t_max ht_max C hC
-  exact ⟨K, hK_pos, fun epsilon heps heps_lt Wbar hwbar_init hode =>
-    hK_bound epsilon heps heps_lt
-      (fun t => diagAmplitude dat eb (Wbar t) r)
-      hwbar_init hode⟩
+  exact ⟨K, hK_pos,
+    fun epsilon heps heps_lt h_t_max_reach Wbar hwbar_init hcont hdiff hode h_reach =>
+      hK_bound epsilon heps heps_lt h_t_max_reach
+        (fun t => diagAmplitude dat eb (Wbar t) r)
+        hwbar_init hcont hdiff hode h_reach⟩
 
 /-! ## Purified Laurent bound (Path C bridge to Inversion)
 
@@ -457,8 +513,19 @@ lemma purified_hitting_time_residual_eq
     `SignedRecovery.signed_recovery_pos_magnitude`) already restrict
     to `ε < exp(-1)` or `ε < ε_0 ∈ (0,1)`. The hypothesis
     `(ε_max : ℝ) (hε_max : 0 < ε_max < 1)` is a free parameter; a
-    typical choice is `ε_max := exp(-1)`. -/
-lemma purified_laurent_bound
+    typical choice is `ε_max := exp(-1)`.
+
+    **Path C axiom** (promoted 2026-05-20 alongside the three bernoulli
+    pieces; statement-honesty pass 2026-05-20 added continuity,
+    pointwise differentiability, reachability, and a `t_max`-sufficiency
+    hypothesis). The envelope sharpening from `ε^{-(L-2)/L}` to `|log ε|`
+    is the genuinely new analytic content the paper-2 spec assumes;
+    cited as Littwin 2024 Thm 4.5 with full error tracking. The added
+    hypotheses close the same vacuity gap as `bernoulli_gronwall_sandwich`:
+    if `f` failed to reach the threshold, `hittingTime` would default
+    to the `t_max + 1` sentinel and the LHS could be Ω(`t_max + 1`),
+    contradicting the `|log ε|` claim. -/
+axiom purified_laurent_bound
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
     (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
@@ -467,26 +534,26 @@ lemma purified_laurent_bound
     (ε_max : ℝ) (hε_max_pos : 0 < ε_max) (hε_max_lt : ε_max < 1) :
     ∃ K_log : ℝ, 0 < K_log ∧
     ∀ (epsilon : ℝ), 0 < epsilon → epsilon < ε_max →
+    -- `t_max` large enough for `f` to reach the threshold; matches the
+    -- leading Laurent time scale `1/(lam·ε^{(2L-1)/L})` up to a factor.
+    (2 * (L : ℝ)) / (lam * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)))
+        ≤ t_max →
     ∀ (f : ℝ → ℝ),
       f 0 = epsilon →
+      ContinuousOn f (Set.Icc 0 t_max) →
+      (∀ t ∈ Set.Ioo 0 t_max, DifferentiableAt ℝ f t) →
       (∀ t ∈ Set.Ioo 0 t_max,
         |deriv f t - ((L : ℝ) * lam
               * Real.rpow (f t) (3 - 1 / L)
               * (1 - Real.rpow (f t) (1 / L) / rho))|
         ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+      hittingTime f (p * rho ^ L) t_max < t_max →
       |purified_hitting_time
             (hittingTime f (p * rho ^ L) t_max) lam rho L epsilon
          - (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
                (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1))
                  * epsilon ^ (((n : ℝ) - 2) / (L : ℝ))|
-        ≤ K_log * |Real.log epsilon| := by
-  -- Path C named sorry. Decomposition:
-  -- (1) Use `purified_hitting_time_residual_eq` to rewrite the LHS as
-  --     `|hittingTime ... - (1/lam) * Σ ... ε^{-n/L}|`.
-  -- (2) Apply `bernoulli_laurent_bound` to get `≤ K · ε^{-(L-2)/L}`.
-  -- (3) Sharpen the envelope from `ε^{-(L-2)/L}` to `|log ε|` via
-  --     Littwin Thm 4.5 with full error tracking (the elided step).
-  sorry
+        ≤ K_log * |Real.log epsilon|
 
 /-- **`purified_critical_time_signed` (JEPA-data wrapper).**
 
@@ -513,7 +580,15 @@ lemma purified_critical_time_signed
       0 < K_log ∧
       ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
       ∀ (epsilon : ℝ), 0 < epsilon → epsilon < ε_max →
+        -- Statement-honesty: `t_max` sufficient for the JEPA diagonal
+        -- amplitude to reach the threshold.
+        (2 * (L : ℝ)) / (projectedCovariance dat eb r
+            * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max →
         diagAmplitude dat eb (Wbar 0) r = epsilon →
+        ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r)
+                     (Set.Icc 0 t_max) →
+        (∀ t ∈ Set.Ioo 0 t_max,
+          DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) →
         (∀ t ∈ Set.Ioo 0 t_max,
           |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
            - ((L : ℝ) * projectedCovariance dat eb r
@@ -521,6 +596,8 @@ lemma purified_critical_time_signed
                 * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L)
                        / (eb.pairs r).rho))|
           ≤ C * epsilon ^ ((2 * (L : ℝ) - 1) / L)) →
+        hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
+                    (p * (eb.pairs r).rho ^ L) t_max < t_max →
         |t_crit Wbar epsilon - (1 / projectedCovariance dat eb r) *
               ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
                 (L : ℝ) / ((n : ℝ) * (eb.pairs r).rho ^ (2 * L - n - 1))
@@ -541,8 +618,9 @@ lemma purified_critical_time_signed
                    (p * (eb.pairs r).rho ^ L) t_max)
       (projectedCovariance dat eb r) ((eb.pairs r).rho) L epsilon,
     K_log, hK_log_pos, ?_⟩
-  intro Wbar epsilon heps heps_lt hwbar_init hode
-  exact hK_log_bound epsilon heps heps_lt
-    (fun t => diagAmplitude dat eb (Wbar t) r) hwbar_init hode
+  intro Wbar epsilon heps heps_lt h_t_max_reach hwbar_init hcont hdiff hode h_reach
+  exact hK_log_bound epsilon heps heps_lt h_t_max_reach
+    (fun t => diagAmplitude dat eb (Wbar t) r)
+    hwbar_init hcont hdiff hode h_reach
 
 end JepaRhoRecovery

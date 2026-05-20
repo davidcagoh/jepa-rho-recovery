@@ -239,7 +239,17 @@ theorem signed_recovery_pos_magnitude_jepa
       ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
       ∃ (ε_0 C : ℝ), 0 < ε_0 ∧ 0 < C ∧
         ∀ (ε : ℝ), 0 < ε → ε < ε_0 → ε < ε_max →
+        -- Statement-honesty (2026-05-20): `t_max` sufficient for the
+        -- JEPA diagonal amplitude to reach the threshold within the
+        -- compact interval. Matches `purified_laurent_bound`'s
+        -- `t_max`-sufficiency hypothesis.
+        (2 * (L : ℝ)) / (projectedCovariance dat eb r
+            * ε ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max →
         diagAmplitude dat eb (Wbar 0) r = ε →
+        ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r)
+                     (Set.Icc 0 t_max) →
+        (∀ t ∈ Set.Ioo 0 t_max,
+          DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) →
         (∀ t ∈ Set.Ioo 0 t_max,
           |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
            - ((L : ℝ) * projectedCovariance dat eb r
@@ -247,6 +257,8 @@ theorem signed_recovery_pos_magnitude_jepa
                 * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L)
                        / (eb.pairs r).rho))|
           ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) →
+        hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
+                    (p * (eb.pairs r).rho ^ L) t_max < t_max →
         |((L : ℝ) / (projectedCovariance dat eb r * t_crit Wbar ε
                        * ε ^ ((1 : ℝ) / L)))
               ^ ((1 : ℝ) / (2 * (L : ℝ) - 2))
@@ -275,13 +287,19 @@ theorem signed_recovery_pos_magnitude_jepa
       (L : ℝ) / ((n : ℝ) * ρ ^ (2 * L - n - 1)) *
         ε ^ (((n : ℝ) - 2) / (L : ℝ))
   let JEPAwindow : ℝ → Prop := fun ε =>
+    (2 * (L : ℝ)) / (lam * ε ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max ∧
     diagAmplitude dat eb (Wbar 0) r = ε ∧
+    ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r) (Set.Icc 0 t_max) ∧
+    (∀ t ∈ Set.Ioo 0 t_max,
+      DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) ∧
     (∀ t ∈ Set.Ioo 0 t_max,
       |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
        - ((L : ℝ) * lam
             * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / L)
             * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L) / ρ))|
-      ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L))
+      ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) ∧
+    hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
+                (p * (eb.pairs r).rho ^ L) t_max < t_max
   let t_aux : ℝ → ℝ := fun ε =>
     if JEPAwindow ε ∧ ε < ε_max then t_crit Wbar ε else asyTerm ε
   -- Step 3: prove the universal Laurent for t_aux (session 82: tightened to
@@ -293,8 +311,10 @@ theorem signed_recovery_pos_magnitude_jepa
     by_cases hw : JEPAwindow ε ∧ ε < ε_max
     · -- In-window AND ε < ε_max: bridge bounds the residual.
       simp only [t_aux, if_pos hw]
-      obtain ⟨⟨hwbar_init, hode⟩, hε_lt_max⟩ := hw
-      have := hbridge Wbar ε hε_pos hε_lt_max hwbar_init hode
+      obtain ⟨⟨ht_max_reach, hwbar_init, hcont, hdiff, hode, h_reach⟩,
+              hε_lt_max⟩ := hw
+      have := hbridge Wbar ε hε_pos hε_lt_max ht_max_reach hwbar_init
+                hcont hdiff hode h_reach
       simpa [asyTerm, hlam_def, hρ_def] using this
     · -- Out-of-window OR ε ≥ ε_max: t_aux ε = asyTerm ε; residual = 0.
       simp only [t_aux, if_neg hw, sub_self, abs_zero]
@@ -306,11 +326,12 @@ theorem signed_recovery_pos_magnitude_jepa
       (by intro ε hε_pos hε_lt; simpa [asyTerm, hlam_def, hρ_def] using
             h_aux_laurent ε hε_pos hε_lt)
   refine ⟨ε_0, C, hε_0_pos, hC_pos, ?_⟩
-  intro ε hε_pos hε_lt_ε_0 hε_lt_max hwbar_init hode
+  intro ε hε_pos hε_lt_ε_0 hε_lt_max ht_max_reach hwbar_init hcont hdiff hode h_reach
   -- Step 5: under JEPA hyps AND ε < ε_max, t_aux ε = t_crit Wbar ε, so the
   -- formula in t_aux equals the formula in t_crit Wbar. Apply hbound and
   -- rewrite.
-  have hwindow : JEPAwindow ε ∧ ε < ε_max := ⟨⟨hwbar_init, hode⟩, hε_lt_max⟩
+  have hwindow : JEPAwindow ε ∧ ε < ε_max :=
+    ⟨⟨ht_max_reach, hwbar_init, hcont, hdiff, hode, h_reach⟩, hε_lt_max⟩
   have h_eq : t_aux ε = t_crit Wbar ε := by simp [t_aux, if_pos hwindow]
   have := hbound ε hε_pos hε_lt_ε_0
   -- hbound: |((L / (lam * t_aux ε * ε^{1/L}))^{1/(2L-2)}) − ρ| ≤ C·ε^{1/L}·|log ε|
