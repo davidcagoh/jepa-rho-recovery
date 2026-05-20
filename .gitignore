@@ -11,3 +11,5 @@ reports/
 requests/
 __pycache__/
 .aristotle-results/
+experiments/results_sigreg_probe/
+experiments/*.npz

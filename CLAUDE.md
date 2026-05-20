@@ -44,7 +44,8 @@ breaking paper 1 builds. Re-evaluate after Layer 2.1 lands.
 | `JepaRhoRecovery/QuasiStatic.lean` | Layer 1.1 — rigorous ODE quasi-static lemma |
 | `JepaRhoRecovery/Ordering.lean` | Layer 1.2 — non-vacuous feature ordering |
 | `JepaRhoRecovery/DiagonalODE.lean` | Layer 2.1 — generalised diagonal ODE reduction |
-| `JepaRhoRecovery/Inversion.lean` | Layer 2.2 — identifiability inversion formula |
+| `JepaRhoRecovery/Inversion.lean` | Layer 2.2 — identifiability inversion formula (v1, critical-time hybrid) |
+| `JepaRhoRecovery/PlateauEstimator.lean` | Layer 2.2′ — plateau + early-slope abstract analytic lemmas (paper-2 headline pivot, session 86) |
 | `JepaRhoRecovery/CriticalTime.lean` | `hittingTime` + `bernoulli_laurent_bound` (2 transplanted named sorries) + `actual_critical_time_signed` — paper-1 lineage, no Lake dep |
 | `JepaRhoRecovery/SampleNoise.lean` | Layer 3.1 — perturbation under sample covariance |
 | `JepaRhoRecovery/FiniteSample.lean` | Layer 3.2 — end-to-end finite-sample rate |

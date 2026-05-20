@@ -1,0 +1,32 @@
+{
+  "d=300, \u03bb=0.0, seed=0, 100k steps": {
+    "relative_0.3": 0.9761904761904763,
+    "relative_0.5": 1.0,
+    "relative_0.7": 1.0,
+    "relative_0.9": 1.0,
+    "absolute_0.005": -0.9047619047619048,
+    "absolute_0.01": -0.9761904761904763,
+    "absolute_0.02": -1.0,
+    "absolute_0.05": -1.0,
+    "absolute_0.1": NaN,
+    "absolute_0.2": NaN,
+    "proximity_0.05": 1.0,
+    "proximity_0.1": 1.0,
+    "proximity_0.2": 1.0
+  },
+  "d=300, \u03bb=0.3, seed=0, 100k steps": {
+    "relative_0.3": -0.9523809523809524,
+    "relative_0.5": -1.0,
+    "relative_0.7": -1.0,
+    "relative_0.9": -1.0,
+    "absolute_0.005": -0.9047619047619048,
+    "absolute_0.01": -0.9523809523809524,
+    "absolute_0.02": -0.9761904761904763,
+    "absolute_0.05": -1.0,
+    "absolute_0.1": -1.0,
+    "absolute_0.2": -1.0,
+    "proximity_0.05": -1.0,
+    "proximity_0.1": -1.0,
+    "proximity_0.2": -1.0
+  }
+}
