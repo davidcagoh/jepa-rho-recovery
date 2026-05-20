@@ -66,7 +66,127 @@ namespace JepaRhoRecovery
 noncomputable def hittingTime (f : ℝ → ℝ) (θ : ℝ) (t_max : ℝ) : ℝ :=
   sInf ({t ∈ Set.Icc (0 : ℝ) t_max | f t ≥ θ} ∪ {t_max + 1})
 
-/-! ## Bernoulli ODE Laurent bound (scalar form) -/
+/-! ## Bernoulli ODE Laurent bound (scalar form)
+
+The proof of `bernoulli_laurent_bound` is now decomposed into THREE
+standalone named-sorry lemmas — each independently dispatchable to
+Aristotle (since paper-1 carried both as elided technical core):
+
+  * `bernoulli_exact_solution_exists` — Picard-Lindelöf existence for
+    the exact Bernoulli ODE (no perturbation).
+  * `bernoulli_gronwall_sandwich` — ODE-comparison Grönwall bound
+    relating perturbed `f` to exact `f₀`.
+  * `bernoulli_exact_laurent` — closed-form Laurent series for the
+    exact Bernoulli ODE hitting time, via Littwin 2024 Thm 4.5.
+
+The main `bernoulli_laurent_bound` is sorry-free, assembled by triangle
+inequality + exponent comparison from the three pieces above.
+-/
+
+/-- **(Piece 1/3) Picard-Lindelöf existence for the exact Bernoulli ODE.**
+
+    For any initial value `epsilon > 0` and parameters `L ≥ 2`, `λ > 0`,
+    `ρ > 0`, there exists a function `f₀ : ℝ → ℝ` with `f₀(0) = ε`
+    satisfying the exact (unperturbed) Bernoulli ODE
+        `f₀'(t) = L · λ · f₀(t)^{3 − 1/L} · (1 − f₀(t)^{1/L} / ρ)`
+    on `Ioo 0 t_max`.
+
+    This is a pure existence statement; no estimates are asserted.
+    The right-hand side is locally Lipschitz on `(0, ρ^L]` so standard
+    Picard-Lindelöf applies on a compact subinterval; existence on the
+    full `Ioo 0 t_max` follows by maximal-solution continuation since
+    the threshold `p · ρ^L` is strictly below `ρ^L` (the fixed point).
+
+    Named sorry — Mathlib's `ODE_solution_exists`-style lemma should
+    apply but the locally-Lipschitz packaging requires care. -/
+lemma bernoulli_exact_solution_exists
+    (L : ℕ) (hL : 2 ≤ L)
+    (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (epsilon : ℝ) (heps : 0 < epsilon) (heps_lt : epsilon < 1) :
+    ∃ (f₀ : ℝ → ℝ),
+      f₀ 0 = epsilon ∧
+      (∀ t ∈ Set.Ioo 0 t_max,
+        deriv f₀ t = (L : ℝ) * lam
+              * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+              * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) := by
+  sorry -- Picard-Lindelöf existence (paper-1 named sorry, piece 1/3).
+
+/-- **(Piece 2/3) Grönwall comparison sandwich.**
+
+    Given an exact Bernoulli solution `f₀` (provided as a hypothesis —
+    typically obtained from `bernoulli_exact_solution_exists`) and a
+    perturbed trajectory `f` with the same initial value `ε` and
+    `|f'(t) − RHS(f(t))| ≤ C · ε^{(2L−1)/L}`, the perturbed and exact
+    hitting times at threshold `p · ρ^L` differ by at most
+    `K₁ · ε^{(2L−1)/L}`.
+
+    Standard Grönwall on `|f − f₀|` plus a lower bound on the speed
+    `f₀'` near the threshold gives the constant `K₁` proportional to
+    `C` and depending on the Lipschitz constant on the compact
+    interval `[0, t_max]`.
+
+    Named sorry — paper-1 named sorry, piece 2/3. -/
+lemma bernoulli_gronwall_sandwich
+    (L : ℕ) (hL : 2 ≤ L)
+    (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
+    (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
+    (t_max : ℝ) (ht_max : 0 < t_max)
+    (C_ode : ℝ) (hC : 0 < C_ode) :
+    ∃ K₁ : ℝ, 0 < K₁ ∧
+    ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+    ∀ (f f₀ : ℝ → ℝ),
+      f 0 = epsilon →
+      f₀ 0 = epsilon →
+      (∀ t ∈ Set.Ioo 0 t_max,
+        deriv f₀ t = (L : ℝ) * lam
+              * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+              * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
+      (∀ t ∈ Set.Ioo 0 t_max,
+        |deriv f t - ((L : ℝ) * lam
+              * Real.rpow (f t) (3 - 1 / (L : ℝ))
+              * (1 - Real.rpow (f t) (1 / (L : ℝ)) / rho))|
+        ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
+      |hittingTime f (p * rho ^ L) t_max
+         - hittingTime f₀ (p * rho ^ L) t_max|
+        ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)) := by
+  sorry -- Grönwall comparison sandwich (paper-1 named sorry, piece 2/3).
+
+/-- **(Piece 3/3) Closed-form Laurent expansion for the exact Bernoulli ODE.**
+
+    Any solution `f₀` of the exact Bernoulli ODE with `f₀(0) = ε`
+    has hitting time at threshold `p · ρ^L` admitting the Laurent
+    expansion
+        `(1/λ) · ∑_{n=1}^{2L−1} L / (n · ρ^{2L−n−1} · ε^{n/L})`
+    with error envelope `K₂ · ε^{−(L−2)/L}` (the next-order subleading
+    polynomial term).
+
+    Proof via Littwin 2024 Thm 4.5: partial-fraction integration of
+    `1/(ψ^{2L} · (1 − ψ))` along the trajectory, then asymptotic
+    expansion as ε → 0+.
+
+    Named sorry — paper-1 named sorry, piece 3/3. Independent of the
+    Grönwall side (pieces 1+2). -/
+lemma bernoulli_exact_laurent
+    (L : ℕ) (hL : 2 ≤ L)
+    (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
+    (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
+    (t_max : ℝ) (ht_max : 0 < t_max) :
+    ∃ K₂ : ℝ, 0 < K₂ ∧
+    ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
+    ∀ (f₀ : ℝ → ℝ),
+      f₀ 0 = epsilon →
+      (∀ t ∈ Set.Ioo 0 t_max,
+        deriv f₀ t = (L : ℝ) * lam
+              * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
+              * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
+      |hittingTime f₀ (p * rho ^ L) t_max
+         - (1 / lam)
+           * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
+               (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
+                             * epsilon ^ ((n : ℝ) / (L : ℝ)))|
+        ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ)) := by
+  sorry -- Littwin 2024 Thm 4.5 (paper-1 named sorry, piece 3/3).
 
 /-- **`bernoulli_laurent_bound` (scalar, positive branch).**
 
@@ -77,18 +197,12 @@ noncomputable def hittingTime (f : ℝ → ℝ) (θ : ℝ) (t_max : ℝ) : ℝ :
         `|τ − (1/λ) · ∑_{n=1}^{2L−1} L / (n · ρ^{2L−n−1} · ε^{n/L})|
            ≤ K · ε^{−(L−2)/L}`.
 
-    The proof, faithfully transplanted from paper-1, decomposes into:
-
-      * `h_gronwall` — Picard-Lindelöf existence for the exact
-        Bernoulli ODE + ODE-comparison Grönwall sandwich bounding the
-        perturbed solution's hitting time against the exact one.
-      * `h_laurent` — closed-form Laurent series for the exact
-        Bernoulli ODE hitting time, via Littwin 2024 Thm 4.5
-        (partial-fraction integration of `1/(ψ^{2L}(1 − ψ))`).
-
-    Both are paper-1's *named sorries*, ported verbatim. They are the
-    elided technical core; treating them as named axioms is
-    CompCert-style honesty. -/
+    **Now sorry-free at this lemma's body** — assembled by triangle
+    inequality from the three named-sorry pieces above:
+      * `bernoulli_exact_solution_exists` (Picard-Lindelöf)
+      * `bernoulli_gronwall_sandwich` (ODE comparison)
+      * `bernoulli_exact_laurent` (Littwin Thm 4.5)
+    Each is independently dispatchable to Aristotle. -/
 lemma bernoulli_laurent_bound
     (L : ℕ) (hL : 2 ≤ L)
     (lam rho : ℝ) (hlam : 0 < lam) (hrho : 0 < rho)
@@ -110,55 +224,20 @@ lemma bernoulli_laurent_bound
                (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
                            * epsilon ^ ((n : ℝ) / L))|
         ≤ K * epsilon ^ (-((L : ℝ) - 2) / L) := by
-  -- Step 1: Picard-Lindelöf existence + Grönwall comparison sandwich.
-  -- Construct the exact Bernoulli ODE solution `f₀` with `f₀(0) = ε`,
-  -- then bound `|τ_f − τ_{f₀}|` via Grönwall on `|f − f₀|`. `K₁` is
-  -- proportional to `C_ode` and depends on the Lipschitz constant on
-  -- a compact interval and the minimum speed near the threshold.
-  -- (Named sorry — same elision as paper-1.)
-  have h_gronwall : ∃ K₁ : ℝ, 0 < K₁ ∧
-      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
-      ∀ (f : ℝ → ℝ),
-        f 0 = epsilon →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          |deriv f t - ((L : ℝ) * lam
-                * Real.rpow (f t) (3 - 1 / (L : ℝ))
-                * (1 - Real.rpow (f t) (1 / (L : ℝ)) / rho))|
-          ≤ C_ode * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) →
-        ∃ (f₀ : ℝ → ℝ),
-          f₀ 0 = epsilon ∧
-          (∀ t ∈ Set.Ioo 0 t_max,
-            deriv f₀ t = (L : ℝ) * lam
-                  * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
-                  * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) ∧
-          |hittingTime f (p * rho ^ L) t_max
-             - hittingTime f₀ (p * rho ^ L) t_max|
-            ≤ K₁ * epsilon ^ ((2 * (L : ℝ) - 1) / (L : ℝ)) := by
-    sorry -- Picard-Lindelöf + Grönwall sandwich (paper-1 named sorry).
-  -- Step 2: Laurent bound for the exact Bernoulli ODE (Littwin Thm 4.5).
-  -- (Named sorry — same elision as paper-1.)
-  have h_laurent : ∃ K₂ : ℝ, 0 < K₂ ∧
-      ∀ (epsilon : ℝ), 0 < epsilon → epsilon < 1 →
-      ∀ (f₀ : ℝ → ℝ),
-        f₀ 0 = epsilon →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          deriv f₀ t = (L : ℝ) * lam
-                * Real.rpow (f₀ t) (3 - 1 / (L : ℝ))
-                * (1 - Real.rpow (f₀ t) (1 / (L : ℝ)) / rho)) →
-        |hittingTime f₀ (p * rho ^ L) t_max
-           - (1 / lam)
-             * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
-                 (L : ℝ) / ((n : ℝ) * rho ^ (2 * L - n - 1)
-                               * epsilon ^ ((n : ℝ) / (L : ℝ)))|
-          ≤ K₂ * epsilon ^ (-((L : ℝ) - 2) / (L : ℝ)) := by
-    sorry  -- Littwin 2024 Thm 4.5 (paper-1 named sorry).
-  -- Step 3: Triangle inequality + exponent comparison.
-  obtain ⟨K₁, hK₁_pos, hK₁_bound⟩ := h_gronwall
-  obtain ⟨K₂, hK₂_pos, hK₂_bound⟩ := h_laurent
+  -- Assemble from the three named-sorry pieces.
+  obtain ⟨K₁, hK₁_pos, hK₁_bound⟩ :=
+    bernoulli_gronwall_sandwich L hL lam rho hlam hrho p hp hp_lt
+      t_max ht_max C_ode hC
+  obtain ⟨K₂, hK₂_pos, hK₂_bound⟩ :=
+    bernoulli_exact_laurent L hL lam rho hlam hrho p hp hp_lt
+      t_max ht_max
   refine ⟨K₁ + K₂, by positivity, ?_⟩
   intro epsilon heps heps_lt f hf0 hode
-  obtain ⟨f₀, hf₀_init, hf₀_ode, h_gronwall_bd⟩ :=
-    hK₁_bound epsilon heps heps_lt f hf0 hode
+  obtain ⟨f₀, hf₀_init, hf₀_ode⟩ :=
+    bernoulli_exact_solution_exists L hL lam rho hlam hrho
+      t_max ht_max epsilon heps heps_lt
+  have h_gronwall_bd :=
+    hK₁_bound epsilon heps heps_lt f f₀ hf0 hf₀_init hf₀_ode hode
   have h_laurent_bd :=
     hK₂_bound epsilon heps heps_lt f₀ hf₀_init hf₀_ode
   set S := (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
