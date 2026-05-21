@@ -45,6 +45,7 @@ import JepaRhoRecovery.DiagonalODE
 import JepaRhoRecovery.Inversion
 import JepaRhoRecovery.SignedODE
 import JepaRhoRecovery.SignedRecovery
+import JepaRhoRecovery.PlateauEstimator
 import JepaRhoRecovery.MixedOrdering
 import JepaRhoRecovery.SampleNoise
 import JepaRhoRecovery.FiniteSample
@@ -250,5 +251,78 @@ theorem signed_decomposition
          fun r hrho_zero => h_sign_zero r hrho_zero ε hε_pos hε_lt_one,
          h_pos_mag_unif ε hε_pos hε_lt_pos_mag,
          h_ord_unif ε hε_pos hε_lt_ord⟩
+
+/-! ## Paper-2 headline — plateau-path positive-branch recovery
+
+    The trajectory-only ρ-recovery result. Given a positive-branch
+    Bernoulli ODE trajectory bundle `σ ε t`, the plateau-derived
+    estimator `ρ̂(ε) := σ(T(ε))^{1/L}` recovers `ρ = λ/μ` at rate
+    `ε^{1/L}|log ε|`.
+
+    This is the moonshot headline in its purest form: no covariance
+    input, no JEPA-window hypothesis bundle, no Path-C envelope axiom.
+    Composes `signed_recovery_pos_magnitude_plateau` (trajectory →
+    plateau bound; session 88) with `rho_hat_plateau_rate` (plateau
+    bound → ρ̂ rate; session 87) into a single statement.
+-/
+
+/-- **Theorem (Plateau-path positive-branch ρ-recovery — paper-2 headline).**
+
+    Given a positive-branch Bernoulli ODE trajectory bundle
+    `σ : ℝ → ℝ → ℝ` with `σ(ε, ·)` a strict-sub-plateau solution of
+    `σ̇ = λ σ^{3-1/L} − μ σ³` starting at most at `ε`, there exists an
+    observation-time schedule `T(ε) > 0` and constants `ε_0, C > 0`
+    such that the estimator `ρ̂(ε) := σ(ε, T(ε))^{1/L}` is positive
+    and satisfies
+
+        |ρ̂(ε) − ρ| ≤ C · ε^{1/L} · |log ε|     for all ε ∈ (0, ε_0),
+
+    where `ρ := λ/μ`. Sorry-free; standard axioms only. -/
+theorem plateau_path_recovery_pos
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_below : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t →
+        sigma ε t < (lambda / mu) ^ L)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 ≤ ε) :
+    ∃ (T : ℝ → ℝ) (ε_0 C : ℝ),
+      0 < ε_0 ∧ ε_0 < 1 ∧ 0 < C ∧
+      (∀ ε : ℝ, 0 < ε → ε < ε_0 → 0 < T ε) ∧
+      (∀ ε : ℝ, 0 < ε → ε < ε_0 →
+          0 < Real.rpow (sigma ε (T ε)) ((1 : ℝ) / L)) ∧
+      (∀ ε : ℝ, 0 < ε → ε < ε_0 →
+          |Real.rpow (sigma ε (T ε)) ((1 : ℝ) / L) - lambda / mu|
+            ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
+  -- Step 1: get T, K_plat from the plateau bridge.
+  obtain ⟨T, K_plat, hK_pos, hT_pos, h_plat⟩ :=
+    signed_recovery_pos_magnitude_plateau L hL lambda mu hlambda_pos hmu_pos
+      sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode hSigma_init
+  -- Step 2: feed into rho_hat_plateau_rate via ρ := λ/μ.
+  set ρ : ℝ := lambda / mu with hρ_def
+  have hρ_pos : 0 < ρ := div_pos hlambda_pos hmu_pos
+  have h_plat_ρ : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      |sigma ε (T ε) - ρ ^ L| ≤ K_plat * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    intro ε hε hε1
+    have := h_plat ε hε hε1
+    simpa [hρ_def] using this
+  obtain ⟨ε_0, C, hε0_pos, hε0_lt1, hC_pos, h_rate⟩ :=
+    rho_hat_plateau_rate L hL ρ hρ_pos (fun ε => sigma ε (T ε))
+      K_plat hK_pos h_plat_ρ
+  -- Step 3: assemble. T positive, rpow positive (since σ > 0), rate via h_rate.
+  refine ⟨T, ε_0, C, hε0_pos, hε0_lt1, hC_pos, ?_, ?_, ?_⟩
+  · intro ε hε hε_lt
+    exact hT_pos ε hε (hε_lt.trans hε0_lt1)
+  · intro ε hε hε_lt
+    have hε1 : ε < 1 := hε_lt.trans hε0_lt1
+    have hT_ε_pos : 0 < T ε := hT_pos ε hε hε1
+    have hσ_pos : 0 < sigma ε (T ε) := hSigma_pos ε hε hε1 (T ε) hT_ε_pos.le
+    exact Real.rpow_pos_of_pos hσ_pos _
+  · exact h_rate
 
 end JepaRhoRecovery

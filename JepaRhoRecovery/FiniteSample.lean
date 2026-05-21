@@ -16,6 +16,7 @@ statistics literature but only partially in Mathlib).
 import JepaRhoRecovery.Basic
 import JepaRhoRecovery.SampleNoise
 import JepaRhoRecovery.Inversion
+import JepaRhoRecovery.PlateauEstimator
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
@@ -112,5 +113,78 @@ theorem finite_sample_rate_pos
     _ ≤ C_rho * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n :=
         add_le_add h_rho_est h_perturbation
     _ = C_rho * ε ^ ((1 : ℝ) / L) * |Real.log ε| + 1 * delta_n := by ring
+
+/-! ## §3.2′ — Plateau-path finite-sample rate (paper-2 headline)
+
+    Mirrors `finite_sample_rate_pos` but uses the plateau estimator
+    (paper-2 framing) instead of the inversion estimator (paper-1
+    framing). The deterministic-ε rate carries the same `ε^{1/L}|log ε|`
+    asymptotic; the sample-noise contribution carries the same `δ_n`
+    additive penalty from Layer 3.1.
+
+    **Probabilistic interpretation.** Under sub-Gaussian data, matrix
+    Bernstein gives `δ_n = O(√(log(1/ν)/n))` on an event of probability
+    `≥ 1 − ν`. Wiring to `MeasureTheory.ProbabilityMeasure` is
+    straightforward but kept abstract here so the theorem composes
+    with any choice of probability framework: the input
+    `h_perturbation : |ρ̂_pop − ρ_r*| ≤ δ_n` IS the deterministic
+    statement on the good event, and the conclusion bounds the
+    estimator error on the same event. -/
+
+/-- **Theorem 3.2′ (Plateau-path finite-sample ρ-recovery, positive branch).**
+
+    Given:
+      * A sample-side observation-time function `T_hat : ℝ → ℝ` and the
+        corresponding sample trajectory value `σ̂(ε) := σ_n(T_hat(ε))`,
+        satisfying the plateau bound
+          `|σ̂(ε) − ρ̂_pop^L| ≤ K_plateau · ε^{1/L} · |log ε|`
+        from `signed_recovery_pos_magnitude_plateau` applied to the
+        sample-side trajectory (with sample-side `ρ̂_pop`).
+      * A sample-eigenvalue perturbation bound
+          `|ρ̂_pop − ρ_r*| ≤ δ_n`
+        from `sample_eigenvalue_perturbation` (Layer 3.1).
+
+    Conclusion: the plateau-derived estimator `ρ̂_n(ε) := σ̂(ε)^{1/L}`
+    satisfies, for ε in a positive sub-window,
+        `|ρ̂_n(ε) − ρ_r*| ≤ C_ε · ε^{1/L} · |log ε| + δ_n`. -/
+theorem plateau_path_finite_sample_rate_pos
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ) (hL : 2 ≤ L)
+    (r : Fin d) (_hrho_pos : 0 < (eb.pairs r).rho)
+    -- Sample-side plateau observable: σ̂(ε) := σ_n(T_hat(ε)).
+    (sigma_at_T_hat : ℝ → ℝ)
+    (rho_hat_pop : ℝ)  -- sample-side plateau height ρ̂_r* := λ̂_r* / μ̂_r
+    (hrho_hat_pop_pos : 0 < rho_hat_pop)
+    (K_plateau : ℝ) (hK_plateau_pos : 0 < K_plateau)
+    -- Sample-side plateau hypothesis (would come from
+    -- signed_recovery_pos_magnitude_plateau applied to sample dynamics).
+    (h_plateau_sample : ∀ ε : ℝ, 0 < ε → ε < 1 →
+        |sigma_at_T_hat ε - rho_hat_pop ^ L|
+          ≤ K_plateau * ε ^ ((1 : ℝ) / L) * |Real.log ε|)
+    -- Sample-eigenvalue perturbation (Layer 3.1 output).
+    (delta_n : ℝ) (_hδn_pos : 0 < delta_n)
+    (h_perturbation : |rho_hat_pop - (eb.pairs r).rho| ≤ delta_n) :
+    ∃ (rho_estimator : ℝ → ℝ) (eps_max C_eps : ℝ),
+        0 < eps_max ∧ 0 < C_eps ∧
+      ∀ ε : ℝ, 0 < ε → ε < eps_max →
+        |rho_estimator ε - (eb.pairs r).rho|
+          ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n := by
+  -- Step 1: plateau → ρ̂ rate via rho_hat_plateau_rate (on sample-side ρ̂_pop).
+  obtain ⟨ε_0, C_plat, hε0_pos, _hε0_lt_one, hC_plat_pos, h_rate⟩ :=
+    rho_hat_plateau_rate L hL rho_hat_pop hrho_hat_pop_pos sigma_at_T_hat
+      K_plateau hK_plateau_pos h_plateau_sample
+  -- Step 2: define the estimator ρ̂_n(ε) := σ̂(ε)^{1/L}.
+  refine ⟨fun ε => Real.rpow (sigma_at_T_hat ε) ((1 : ℝ) / L),
+          ε_0, C_plat, hε0_pos, hC_plat_pos, ?_⟩
+  intro ε hε_pos hε_lt
+  -- Step 3: triangle inequality.
+  --   |ρ̂_n(ε) − ρ_r*|  ≤  |ρ̂_n(ε) − ρ̂_pop|  +  |ρ̂_pop − ρ_r*|
+  --                    ≤  C_plat · ε^{1/L} · |log ε|  +  δ_n.
+  have h_plat_term := h_rate ε hε_pos hε_lt
+  calc |Real.rpow (sigma_at_T_hat ε) ((1 : ℝ) / L) - (eb.pairs r).rho|
+      ≤ |Real.rpow (sigma_at_T_hat ε) ((1 : ℝ) / L) - rho_hat_pop|
+        + |rho_hat_pop - (eb.pairs r).rho| := abs_sub_le _ _ _
+    _ ≤ C_plat * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n :=
+        add_le_add h_plat_term h_perturbation
 
 end JepaRhoRecovery
