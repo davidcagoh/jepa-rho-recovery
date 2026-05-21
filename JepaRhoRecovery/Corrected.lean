@@ -169,6 +169,44 @@ theorem signed_recovery_pos_magnitude_plateau_corrected
       (∀ ε : ℝ, 0 < ε → ε < 1 →
         |sigma ε (T ε) - Real.rpow (lambda / mu) ((1 : ℝ) / L)|
           ≤ K_plateau * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
-  sorry
+  -- Aristotle job cdf0ac25 (session 90).
+  -- Step 1: For each ε, obtain qualitative convergence via the corrected lemma
+  have h_conv : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      Filter.Tendsto (sigma ε) Filter.atTop
+        (nhds (Real.rpow (lambda / mu) ((1 : ℝ) / L))) := by
+    intro ε hε hε1
+    exact sigma_positive_branch_converges_corrected L hL lambda mu hlambda_pos hmu_pos
+      (sigma ε) (hSigma_pos ε hε hε1) (hSigma_below ε hε hε1)
+      (hSigma_cont ε hε hε1) (hSigma_ode ε hε hε1)
+  -- Step 2: For each ε, extract a witness time via Metric.tendsto_atTop
+  have h_each : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      ∃ T : ℝ, 0 < T ∧
+        |sigma ε T - Real.rpow (lambda / mu) ((1 : ℝ) / L)| ≤
+          ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    intro ε hε hε1
+    have hlog_neg : Real.log ε < 0 := Real.log_neg hε hε1
+    have habs_log_pos : 0 < |Real.log ε| := abs_pos.mpr (ne_of_lt hlog_neg)
+    have hpow_pos : 0 < ε ^ ((1 : ℝ) / L) := by positivity
+    have hδ_pos : 0 < ε ^ ((1 : ℝ) / L) * |Real.log ε| := mul_pos hpow_pos habs_log_pos
+    have hconv_ε := h_conv ε hε hε1
+    rw [Metric.tendsto_atTop] at hconv_ε
+    obtain ⟨N, hN⟩ := hconv_ε (ε ^ ((1 : ℝ) / L) * |Real.log ε|) hδ_pos
+    refine ⟨max N 1, by positivity, ?_⟩
+    have hge : max N 1 ≥ N := le_max_left N 1
+    have hdist := hN (max N 1) hge
+    rw [Real.dist_eq] at hdist
+    linarith
+  -- Step 3: Bundle via Classical.choice into T : ℝ → ℝ, K_plateau = 1
+  refine ⟨fun ε => if h : 0 < ε ∧ ε < 1 then (h_each ε h.1 h.2).choose else 1,
+          1, one_pos, ?_, ?_⟩
+  · intro ε hε hε1
+    have hcond : 0 < ε ∧ ε < 1 := ⟨hε, hε1⟩
+    simp only [dif_pos hcond]
+    exact (h_each ε hε hε1).choose_spec.1
+  · intro ε hε hε1
+    have hcond : 0 < ε ∧ ε < 1 := ⟨hε, hε1⟩
+    simp only [dif_pos hcond]
+    have hb := (h_each ε hε hε1).choose_spec.2
+    linarith [hb]
 
 end JepaRhoRecovery
