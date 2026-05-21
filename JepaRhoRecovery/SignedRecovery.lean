@@ -529,6 +529,69 @@ theorem signed_recovery_pos_magnitude_plateau
     [0, t₀]. This is the corrected (post-counterexample, Aristotle
     `95ddb6a0`) exponent. -/
 
+/-- The observation time t₀(ε) = c·λ⁻¹·ε^{-(2L-1)/L} is nonneg. -/
+private lemma early_obs_time_nonneg
+    (lambda : ℝ) (hlambda_pos : 0 < lambda)
+    (c : ℝ) (hc_pos : 0 < c)
+    (ε : ℝ) (hε : 0 < ε) (L : ℕ) :
+    0 ≤ c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ)) := by
+  positivity
+
+/-- Grönwall-based bound: |σ(t₀) − σ_id(t₀)| ≤ C·ε^{(L+1)/L}.
+    This is the single remaining sorry in the paper-2 bridge chain;
+    see the docstring of `early_slope_perturbation_pos` below and
+    `requests/23_early_slope_gronwall_request.md` for the full plan
+    (mirror of NegBranchHelpers structure on the positive branch). -/
+private lemma early_slope_gronwall_bound
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (c : ℝ) (hc_pos : 0 < c) (hc_lt_one : c < 1)
+    (hc_small : c * ((2 * (L : ℝ) - 1) / (L : ℝ)) < 1)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
+    ∃ C : ℝ, 0 < C ∧ ∀ ε : ℝ, 0 < ε → ε < 1 →
+      |sigma ε (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ)))
+        - Real.rpow (ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))
+                    - ((2 * (L : ℝ) - 1) / (L : ℝ)) * lambda
+                        * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))))
+                    (-(L : ℝ) / (2 * (L : ℝ) - 1))|
+        ≤ C * ε ^ (((L : ℝ) + 1) / (L : ℝ)) := by
+  sorry
+
+/-- Combines positivity at t₀ with the Grönwall bound. -/
+private lemma early_slope_core
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (c : ℝ) (hc_pos : 0 < c) (hc_lt_one : c < 1)
+    (hc_small : c * ((2 * (L : ℝ) - 1) / (L : ℝ)) < 1)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
+    ∃ C : ℝ, 0 < C ∧ ∀ ε : ℝ, 0 < ε → ε < 1 →
+      0 < sigma ε (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))) ∧
+      |sigma ε (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ)))
+        - Real.rpow (ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))
+                    - ((2 * (L : ℝ) - 1) / (L : ℝ)) * lambda
+                        * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))))
+                    (-(L : ℝ) / (2 * (L : ℝ) - 1))|
+        ≤ C * ε ^ (((L : ℝ) + 1) / (L : ℝ)) := by
+  obtain ⟨C, hC, hbd⟩ := early_slope_gronwall_bound L hL lambda mu hlambda_pos hmu_pos
+    c hc_pos hc_lt_one hc_small sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
+  exact ⟨C, hC, fun ε hε hε1 =>
+    ⟨hSigma_pos ε hε hε1 _ (early_obs_time_nonneg lambda hlambda_pos c hc_pos ε hε L),
+     hbd ε hε hε1⟩⟩
+
 /-- **Bridge to early-slope estimator (paper Thm 5.2 feeder).**
 
     For each ε ∈ (0,1), `sigma ε : ℝ → ℝ` is the positive-branch
@@ -579,7 +642,15 @@ theorem signed_recovery_pos_magnitude_plateau
     VACUITY. K_early > 0 forced. The positivity output
     `0 < sigma ε (t₀ ε)` is forced by `hSigma_pos`. The trajectory is
     constrained by ODE + positivity + initial condition, so a degenerate
-    witness would require contradicting the IC `sigma ε 0 = ε`. -/
+    witness would require contradicting the IC `sigma ε 0 = ε`.
+
+    **Statement correction (session 88, Aristotle `49212b46`).**
+    Original `|Real.log ε|` factor falsified by counterexample
+    (L=2, λ=μ=1, c=0.3): as ε → 1⁻, |log ε| → 0 but the perturbation
+    converges to a positive constant (≈ 0.49). Patched to
+    `(1 + |Real.log ε|)`, which is ≥ 1 for all ε ∈ (0,1) and preserves
+    the `|log ε|` asymptotics as ε → 0⁺. -/
+
 theorem early_slope_perturbation_pos
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
@@ -601,8 +672,13 @@ theorem early_slope_perturbation_pos
                       - ((2 * (L : ℝ) - 1) / L) * lambda
                           * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L)))
                       (-(L : ℝ) / (2 * (L : ℝ) - 1))|
-          ≤ K_early * ε ^ (((L : ℝ) + 1) / (L : ℝ)) * |Real.log ε| := by
-  sorry
+          ≤ K_early * ε ^ (((L : ℝ) + 1) / (L : ℝ)) * (1 + |Real.log ε|) := by
+  obtain ⟨C, hC, hcore⟩ := early_slope_core L hL lambda mu hlambda_pos hmu_pos
+    c hc_pos hc_lt_one hc_small sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
+  exact ⟨C, hC, fun ε hε hε1 => by
+    obtain ⟨hpos, hle⟩ := hcore ε hε hε1
+    exact ⟨hpos, le_trans hle (le_mul_of_one_le_right (by positivity)
+      (le_add_of_nonneg_right (abs_nonneg _)))⟩⟩
 
 /-! ## §7.3 — Negative-branch λ-rate from late-time decay (paper Thm 7.3 part 1)
 
