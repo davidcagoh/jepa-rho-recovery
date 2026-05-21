@@ -39,6 +39,7 @@ import JepaRhoRecovery.Inversion
 import JepaRhoRecovery.SignedODE
 import JepaRhoRecovery.DiagonalODE
 import JepaRhoRecovery.CriticalTime
+import JepaRhoRecovery.NegBranchHelpers
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
@@ -395,6 +396,50 @@ theorem signed_recovery_neg_magnitude_obstruction
     `PlateauEstimator.rho_hat_plateau_rate`. Pure ODE work: Lyapunov-style
     rate of approach to the fixed point ρ^L. -/
 
+/-- Helper: the ODE `σ̇ = λσ^{3-1/L} − μσ³` with `ρ = λ/μ` matches the
+    form `σ̇ = λσ^{3-1/L} − (λ/ρ)σ³` consumed by
+    `sigma_positive_branch_converges`. -/
+private lemma plateau_convergence_per_eps
+    (L : ℕ) (hL : 2 ≤ L) (lambda mu : ℝ)
+    (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (f : ℝ → ℝ)
+    (hf_pos : ∀ t : ℝ, 0 ≤ t → 0 < f t)
+    (hf_below : ∀ t : ℝ, 0 ≤ t → f t < (lambda / mu) ^ L)
+    (hf_cont : Continuous f)
+    (hf_ode : ∀ t : ℝ, 0 < t →
+      HasDerivAt f
+        (lambda * Real.rpow (f t) (3 - 1 / (L : ℝ))
+          - mu * (f t) ^ 3) t) :
+    Filter.Tendsto f Filter.atTop (nhds ((lambda / mu) ^ L)) := by
+  convert sigma_positive_branch_converges L hL lambda ( lambda / mu ) hlambda_pos ( div_pos hlambda_pos hmu_pos ) f ?_ ?_ hf_cont ?_ using 1
+  · assumption
+  · assumption
+  · grind
+
+/-- Helper: for each ε ∈ (0,1), the convergence gives a concrete time
+    T > 0 where the gap is ≤ ε^{1/L} · |log ε|. -/
+private lemma plateau_gap_time_exists
+    (L : ℕ) (hL : 2 ≤ L) (lambda mu : ℝ)
+    (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
+    (f : ℝ → ℝ)
+    (hf_pos : ∀ t : ℝ, 0 ≤ t → 0 < f t)
+    (hf_below : ∀ t : ℝ, 0 ≤ t → f t < (lambda / mu) ^ L)
+    (hf_cont : Continuous f)
+    (hf_ode : ∀ t : ℝ, 0 < t →
+      HasDerivAt f
+        (lambda * Real.rpow (f t) (3 - 1 / (L : ℝ))
+          - mu * (f t) ^ 3) t)
+    (ε : ℝ) (hε : 0 < ε) (hε1 : ε < 1) :
+    ∃ T : ℝ, 0 < T ∧
+      |f T - (lambda / mu) ^ L| ≤
+        ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+  have h_limit : Filter.Tendsto f Filter.atTop (nhds ((lambda / mu) ^ L)) :=
+    plateau_convergence_per_eps L hL lambda mu hlambda_pos hmu_pos f hf_pos hf_below hf_cont hf_ode
+  rcases Metric.tendsto_atTop.mp h_limit (ε ^ (1 / (L : ℝ)) * |Real.log ε|)
+    (mul_pos (Real.rpow_pos_of_pos hε _) (abs_pos.mpr (ne_of_lt (Real.log_neg hε hε1))))
+    with ⟨T, hT⟩
+  exact ⟨Max.max T 1, by positivity, le_of_lt (hT _ (le_max_left _ _))⟩
+
 /-- **Bridge to plateau estimator (paper Thm 5.1′ feeder).**
 
     For each ε ∈ (0,1), `sigma ε : ℝ → ℝ` is a positive-branch trajectory
@@ -456,7 +501,25 @@ theorem signed_recovery_pos_magnitude_plateau
       (∀ ε : ℝ, 0 < ε → ε < 1 →
         |sigma ε (T ε) - (lambda / mu) ^ L|
           ≤ K_plateau * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
-  sorry
+  have h_each : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      ∃ T : ℝ, 0 < T ∧
+        |sigma ε T - (lambda / mu) ^ L| ≤
+          ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    intro ε hε hε1
+    exact plateau_gap_time_exists L hL lambda mu hlambda_pos hmu_pos (sigma ε)
+      (hSigma_pos ε hε hε1) (hSigma_below ε hε hε1)
+      (hSigma_cont ε hε hε1) (hSigma_ode ε hε hε1) ε hε hε1
+  refine ⟨fun ε => if h : 0 < ε ∧ ε < 1 then (h_each ε h.1 h.2).choose else 1,
+          1, one_pos, ?_, ?_⟩
+  · intro ε hε hε1
+    have hcond : 0 < ε ∧ ε < 1 := ⟨hε, hε1⟩
+    simp only [dif_pos hcond]
+    exact (h_each ε hε hε1).choose_spec.1
+  · intro ε hε hε1
+    have hcond : 0 < ε ∧ ε < 1 := ⟨hε, hε1⟩
+    simp only [dif_pos hcond]
+    have hb := (h_each ε hε hε1).choose_spec.2
+    linarith [hb]
 
 /-! ## §4.1-bridge — Trajectory → early-slope ε^{(L+1)/L} perturbation
     (paper Thm 5.2 bridge)
@@ -551,47 +614,31 @@ theorem early_slope_perturbation_pos
     NOTE: paper Thm 7.3 part 1 only. Part 2 (μ-rate suboptimality) is an
     information-theoretic lower bound, deferred (paper-3 territory). -/
 
-/-- **Negative-branch λ-rate (paper Thm 7.3 part 1).**
+/-  ORIGINAL STATEMENT (commented out — FALSE as stated).
 
-    For each ε ∈ (0,1), the negative-branch trajectory `sigma ε : ℝ → ℝ`
-    solves the Bernoulli ODE with λ < 0, μ > 0, and initial condition ε.
-    The curve-fit estimator
-        λ̂(ε, t) := -(L/(2L-1))·sigma ε t ^{-(2L-1)/L} / t
-    recovers |λ| at rate O(ε^{1/L}) for an appropriately chosen
-    observation time T(ε).
+    The leading coefficient `(-((L : ℝ) / (2 * (L : ℝ) - 1)))` has the
+    wrong sign.  For the negative branch (λ < 0), the transformed variable
+    v(t) := σ(t)^{-(2L-1)/L} is increasing, so the estimator
 
-    PROVIDED SOLUTION (decay analysis, mirror of early-slope):
+        -(L/(2L-1)) · v(T)/T
 
-    Step 1 — closed-form idealised decay. With μ = 0, σ̇ = λσ^{3-1/L} and
-    λ < 0 gives σ_id(t) = (ε^{-(2L-1)/L} + ((2L-1)/L)·|λ|·t)^{-L/(2L-1)}.
-    At late time t ≫ ε^{-(2L-1)/L}/|λ|: σ_id(t) ≈ (((2L-1)/L)·|λ|·t)^{-L/(2L-1)}.
-    Idealised inversion: |λ̂_id(ε, t)| = (L/(2L-1))·σ_id(t)^{-(2L-1)/L}/t.
+    converges to -|λ| = λ (NEGATIVE), not to -λ = |λ| (POSITIVE).
+    Subtracting (-λ) = |λ| therefore leaves a residual of magnitude 2|λ|,
+    which is bounded below by a positive constant for all T > 0.
+    Since K · ε^{1/L} · |log ε| → 0 as ε → 0⁺, no finite K satisfies the
+    bound for all ε ∈ (0,1).
 
-    Step 2 — μ-perturbation on the negative branch. The μσ³ term is
-    SUBLEADING for the decaying trajectory (σ → 0): μσ³/|λ|σ^{3-1/L} =
-    (μ/|λ|)·σ^{1/L} → 0. Grönwall gives δ := σ - σ_id bounded by a
-    similar O(ε^{(L+1)/L}) calculation as `early_slope_perturbation_pos`
-    on the appropriate late-time window.
+    **Fix:** remove the leading minus sign so the estimator reads
 
-    Step 3 — choose T(ε). Take T(ε) := c·|λ|⁻¹·ε^{-(2L-1)/L} for some
-    c > 1 with c·(2L-1)/L > 1 (late-time, well past the transient).
-    Standard mean-value bound on x ↦ x^{-(2L-1)/L} transfers the
-    σ-perturbation to the inverse:
-        |λ̂ - |λ|| ≤ C · ε^{1/L}·|log ε|.
+        (L/(2L-1)) · σ(ε,T)^{-(2L-1)/L} / T
 
-    Step 4 — explicit constants. K_neg := assembled constant from
-    Step 3, > 0.
+    which converges to |λ| = -λ.  Additionally, replace the universal
+    `ε < 1` quantifier with an existential `ε < ε₀ < 1` (matching the
+    pattern of `lambda_hat_early_slope_rate` in PlateauEstimator.lean)
+    because the bound `K · ε^{1/L} · |log ε|` degenerates as ε → 1⁻
+    (where |log ε| → 0).
 
-    Reuse the abstract `lambda_hat_early_slope_rate` infrastructure:
-    the inversion formula structure is IDENTICAL (mean-value on a
-    Bernoulli inversion), only the sign and observation-time-regime
-    differ. Many helpers from `PlateauEstimator` apply directly.
-
-    VACUITY. K_neg > 0 and T(ε) > 0 forced. The negative-branch
-    constraint λ < 0 ∧ μ > 0 makes the ODE genuinely contractive
-    toward 0, so trajectories with initial condition ε > 0 decay
-    monotonically (cf. `sigma_negative_branch_antitone`). -/
-theorem signed_recovery_neg_lambda_rate
+theorem signed_recovery_neg_lambda_rate_ORIGINAL
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_neg : lambda < 0) (hmu_pos : 0 < mu)
     (sigma : ℝ → ℝ → ℝ)
@@ -610,5 +657,62 @@ theorem signed_recovery_neg_lambda_rate
           - (-lambda)|
           ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
   sorry
+-/
+
+/-- **Negative-branch λ-rate (paper Thm 7.3 part 1, CORRECTED).**
+
+    **Corrections from the original statement:**
+    1. **Sign fix.** The leading coefficient is now **positive**
+       `(L/(2L-1))` instead of `-(L/(2L-1))`.  The original negative sign
+       made the estimator converge to `λ = -|λ|` rather than `|λ| = -λ`,
+       leaving an irreducible gap of `2|λ|`.
+    2. **Added ε₀.** The quantifier is now `ε < ε₀` (with ε₀ existentially
+       quantified, 0 < ε₀ < 1) instead of `ε < 1`.  This matches the
+       pattern of `lambda_hat_early_slope_rate` and avoids the degeneracy
+       of `|log ε| → 0` as `ε → 1⁻`.
+
+    The **mathematical content** is unchanged:
+
+    For each ε ∈ (0,ε₀), the negative-branch trajectory `sigma ε : ℝ → ℝ`
+    solves the Bernoulli ODE with λ < 0, μ > 0, and initial condition ε.
+    The curve-fit estimator
+        λ̂(ε, t) := (L/(2L-1))·sigma ε t ^{-(2L-1)/L} / t
+    recovers |λ| = -λ at rate O(ε^{1/L}·|log ε|) for an appropriately
+    chosen observation time T(ε).
+
+    **Proof sketch.**
+
+    Choose T(ε) = ε^{-2}/(-λ) and K_neg = (L/(2L-1))·(-λ) + μ + 1.
+
+    Define v(t) := σ(t)^{-(2L-1)/L}. From the ODE, v' = (2L-1)/L·(-λ+μσ^{1/L}).
+    Since σ ≤ ε (antitone, neg_branch_sigma_le_init):
+    • v(T) ≥ v(0) + (2L-1)/L·(-λ)·T  (lower bound, neg_branch_v_lower_bound)
+    • v(T) ≤ v(0) + (2L-1)/L·(-λ+με^{1/L})·T  (upper bound, neg_branch_v_upper_bound)
+
+    The estimator (L/(2L-1))·v(T)/T lies in [|λ| + (L/(2L-1))·v(0)/T,
+    |λ| + μ·ε^{1/L} + (L/(2L-1))·v(0)/T]. With T = ε^{-2}/(-λ):
+    error ≤ (L/(2L-1))·(-λ)·ε^{1/L} + μ·ε^{1/L} ≤ K·ε^{1/L}·|log ε|
+    for ε < ε₀ where |log ε₀| ≥ 1. -/
+theorem signed_recovery_neg_lambda_rate
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_neg : lambda < 0) (hmu_pos : 0 < mu)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
+    ∃ T : ℝ → ℝ, ∃ K_neg : ℝ, ∃ eps_0 : ℝ,
+      0 < eps_0 ∧ eps_0 < 1 ∧ 0 < K_neg ∧
+      (∀ ε : ℝ, 0 < ε → ε < eps_0 → 0 < T ε) ∧
+      (∀ ε : ℝ, 0 < ε → ε < eps_0 →
+        |((L : ℝ) / (2 * (L : ℝ) - 1))
+            * Real.rpow (sigma ε (T ε)) (-(2 * (L : ℝ) - 1) / L) / T ε
+          - (-lambda)|
+          ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε|) :=
+  signed_recovery_neg_lambda_rate_core L hL lambda mu hlambda_neg hmu_pos
+    sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
 
 end JepaRhoRecovery
