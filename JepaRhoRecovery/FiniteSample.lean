@@ -13,6 +13,7 @@ The concentration rate `δ(n) = O(n^{-1/2})` is taken as a hypothesis
 statistics literature but only partially in Mathlib).
 -/
 
+import Mathlib.MeasureTheory.Measure.ProbabilityMeasure
 import JepaRhoRecovery.Basic
 import JepaRhoRecovery.SampleNoise
 import JepaRhoRecovery.Inversion
@@ -186,5 +187,81 @@ theorem plateau_path_finite_sample_rate_pos
         + |rho_hat_pop - (eb.pairs r).rho| := abs_sub_le _ _ _
     _ ≤ C_plat * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n :=
         add_le_add h_plat_term h_perturbation
+
+/-! ## §3.3 — High-probability lift (measure-theoretic plumbing)
+
+    Lifts the deterministic plateau-path finite-sample rate from
+    "holds pointwise on a good event `G`" to "holds with probability
+    ≥ `μ(G)`". Pure measure-theoretic plumbing; combines with matrix
+    Bernstein (named axiom `matrix_bernstein_subgaussian` in
+    `Concentration.lean`) to produce the probabilistic paper-2
+    headline.
+
+    **Composition pattern.** A typical use chains three results:
+      (1) `matrix_bernstein_subgaussian` (axiom) — gives a Bernstein
+          good event `G_B` with `μ(G_B) ≥ 1 − ν` on which
+          `‖Σ̂ − Σ‖_F ≤ radius(n, ν)`.
+      (2) `sample_eigenvalue_perturbation` (Layer 3.1, deterministic) —
+          on `G_B`, gives `|ρ̂_pop − ρ_r*| ≤ C_pert · radius(n, ν)`.
+      (3) `plateau_path_finite_sample_rate_pos` (Layer 3.2,
+          deterministic) — on `G_B`, gives
+          `|ρ̂_n(ε) − ρ_r*| ≤ C_ε · ε^{1/L}|log ε| + C_pert · radius(n,ν)`.
+      (4) This theorem — lifts the pointwise rate on `G_B` to the
+          probabilistic statement
+          `μ{ω : rate holds} ≥ μ(G_B) ≥ 1 − ν`.
+-/
+
+/-- **Theorem (Plateau-path finite-sample rate — high-probability form).**
+
+    Pure measure-theoretic lift: given a measurable "good event" `G`
+    with `μ(G) ≥ 1 − ν` on which the deterministic finite-sample rate
+    holds pointwise, the rate holds with probability ≥ `1 − ν`.
+
+    The deterministic rate hypothesis `h_rate_on_G` is what the
+    composition pattern above produces; the matrix-Bernstein axiom and
+    `sample_eigenvalue_perturbation` are invoked outside this theorem
+    so the signature stays clean. -/
+theorem plateau_path_finite_sample_rate_pos_high_prob
+    {d : ℕ}
+    (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
+    (L : ℕ)
+    (r : Fin d)
+    {Ω : Type} [MeasurableSpace Ω] (μ : MeasureTheory.ProbabilityMeasure Ω)
+    (ν : ℝ) (hν_pos : 0 < ν) (hν_lt_one : ν < 1)
+    -- Deterministic rate constants + sample-noise radius.
+    (rho_estimator : Ω → ℝ → ℝ)
+    (eps_max C_eps delta_n : ℝ)
+    -- The good event: probability ≥ 1 − ν, rate holds pointwise.
+    (G : Set Ω)
+    (hG_prob : ((μ : MeasureTheory.Measure Ω) G).toReal ≥ 1 - ν)
+    (h_rate_on_G : ∀ ω ∈ G, ∀ ε, 0 < ε → ε < eps_max →
+        |rho_estimator ω ε - (eb.pairs r).rho|
+          ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n) :
+    ((μ : MeasureTheory.Measure Ω)
+        {ω | ∀ ε, 0 < ε → ε < eps_max →
+              |rho_estimator ω ε - (eb.pairs r).rho|
+                ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n}).toReal
+      ≥ 1 - ν := by
+  -- G ⊆ {ω | rate holds}, by h_rate_on_G.
+  have h_subset : G ⊆ {ω | ∀ ε, 0 < ε → ε < eps_max →
+      |rho_estimator ω ε - (eb.pairs r).rho|
+        ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n} := by
+    intro ω hω ε hε_pos hε_lt
+    exact h_rate_on_G ω hω ε hε_pos hε_lt
+  -- Monotonicity of the underlying measure.
+  have h_mono : (μ : MeasureTheory.Measure Ω) G ≤
+      (μ : MeasureTheory.Measure Ω) {ω | ∀ ε, 0 < ε → ε < eps_max →
+        |rho_estimator ω ε - (eb.pairs r).rho|
+          ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n} :=
+    MeasureTheory.measure_mono h_subset
+  -- Push monotonicity through `.toReal`. The larger measure is bounded by
+  -- μ(univ) = 1 (probability measure), hence finite.
+  set A : Set Ω := {ω | ∀ ε, 0 < ε → ε < eps_max →
+        |rho_estimator ω ε - (eb.pairs r).rho|
+          ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n} with hA_def
+  have h_finite : (μ : MeasureTheory.Measure Ω) A ≠ ⊤ :=
+    (MeasureTheory.measure_lt_top (μ : MeasureTheory.Measure Ω) A).ne
+  have h_toReal := ENNReal.toReal_mono h_finite h_mono
+  linarith [hG_prob]
 
 end JepaRhoRecovery
