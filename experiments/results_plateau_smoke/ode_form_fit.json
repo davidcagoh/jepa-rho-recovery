@@ -1,0 +1,88 @@
+{
+  "config": {
+    "d": 6,
+    "eps": 0.05,
+    "steps": 40000,
+    "lr": 0.02,
+    "n": 4096,
+    "seed": 0
+  },
+  "paper_form": {
+    "mean_abs_residual_all": 0.18201975068953347,
+    "mean_abs_residual_motion": 0.0850419133709285,
+    "mean_rel_residual_motion": 8.557904793265227,
+    "max_rel_residual_motion": 178.2380495491015,
+    "median_rel_residual_motion": 1.4346126963131756,
+    "n_motion_samples": 191
+  },
+  "saxe_form": {
+    "mean_abs_residual_all": 0.002870103921181919,
+    "mean_abs_residual_motion": 0.061411383431407986,
+    "mean_rel_residual_motion": 0.6745329473623201,
+    "max_rel_residual_motion": 0.855487332468958,
+    "median_rel_residual_motion": 0.7358833313486314,
+    "n_motion_samples": 191
+  },
+  "per_feature_at_peak_dsig": [
+    {
+      "r": 0,
+      "rho": 1.0,
+      "sigma": 0.5250096636652073,
+      "dsig_measured": 0.12664979511357022,
+      "paper_rhs": 0.11001472046557631,
+      "saxe_rhs": 0.5511100253944305,
+      "paper_ratio": 0.8686529683441114,
+      "saxe_ratio": 4.351448219085042
+    },
+    {
+      "r": 1,
+      "rho": 0.84,
+      "sigma": 0.5419026189921207,
+      "dsig_measured": 0.09599852477213305,
+      "paper_rhs": 0.04490347624425835,
+      "saxe_rhs": 0.43588919355142275,
+      "paper_ratio": 0.4677517321317542,
+      "saxe_ratio": 4.540582207758622
+    },
+    {
+      "r": 2,
+      "rho": 0.6799999999999999,
+      "sigma": 0.49532648215865577,
+      "dsig_measured": 0.06896664231324723,
+      "paper_rhs": -0.008217366297999077,
+      "saxe_rhs": 0.30304608369689556,
+      "paper_ratio": -0.1191498675646077,
+      "saxe_ratio": 4.394096530326314
+    },
+    {
+      "r": 3,
+      "rho": 0.52,
+      "sigma": 0.4050455611680736,
+      "dsig_measured": 0.05037127327714175,
+      "paper_rhs": -0.02431429417181488,
+      "saxe_rhs": 0.18351023069515746,
+      "paper_ratio": -0.4827015993429055,
+      "saxe_ratio": 3.643152510469366
+    },
+    {
+      "r": 4,
+      "rho": 0.36,
+      "sigma": 0.3593441763837866,
+      "dsig_measured": 0.02718667455371515,
+      "paper_rhs": -0.03707039596090313,
+      "saxe_rhs": 0.09946418565590225,
+      "paper_ratio": -1.3635502160317483,
+      "saxe_ratio": 3.6585638842802175
+    },
+    {
+      "r": 5,
+      "rho": 0.2,
+      "sigma": 0.2564037066055895,
+      "dsig_measured": 0.011011110578823091,
+      "paper_rhs": -0.02039751980010752,
+      "saxe_rhs": 0.03486212319836301,
+      "paper_ratio": -1.8524489109515132,
+      "saxe_ratio": 3.166086013649788
+    }
+  ]
+}
