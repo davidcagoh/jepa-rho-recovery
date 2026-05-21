@@ -40,6 +40,7 @@ import JepaRhoRecovery.SignedODE
 import JepaRhoRecovery.DiagonalODE
 import JepaRhoRecovery.CriticalTime
 import JepaRhoRecovery.NegBranchHelpers
+import JepaRhoRecovery.EarlySlopeGronwall
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
@@ -538,10 +539,8 @@ private lemma early_obs_time_nonneg
   positivity
 
 /-- Grönwall-based bound: |σ(t₀) − σ_id(t₀)| ≤ C·ε^{(L+1)/L}.
-    This is the single remaining sorry in the paper-2 bridge chain;
-    see the docstring of `early_slope_perturbation_pos` below and
-    `requests/23_early_slope_gronwall_request.md` for the full plan
-    (mirror of NegBranchHelpers structure on the positive branch). -/
+    Proved sorry-free via the v-transform approach in
+    `JepaRhoRecovery.EarlySlopeGronwall`. -/
 private lemma early_slope_gronwall_bound
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
@@ -562,7 +561,8 @@ private lemma early_slope_gronwall_bound
                         * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / (L : ℝ))))
                     (-(L : ℝ) / (2 * (L : ℝ) - 1))|
         ≤ C * ε ^ (((L : ℝ) + 1) / (L : ℝ)) := by
-  sorry
+  exact early_slope_gronwall_bound_aux L hL lambda mu hlambda_pos hmu_pos
+    c hc_pos hc_lt_one hc_small sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
 
 /-- Combines positivity at t₀ with the Grönwall bound. -/
 private lemma early_slope_core
