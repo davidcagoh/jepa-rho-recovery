@@ -51,6 +51,7 @@ breaking paper 1 builds. Re-evaluate after Layer 2.1 lands.
 | `JepaRhoRecovery/FiniteSample.lean` | Layer 3.2 — end-to-end finite-sample rate |
 | `JepaRhoRecovery/SignedODE.lean` | Layer 4.1 — signed-$\rho$ ODE analysis |
 | `JepaRhoRecovery/SignedRecovery.lean` | Layer 4.2 — sign identification theorem |
+| `JepaRhoRecovery/NegBranchHelpers.lean` | Bernoulli v-transform helpers for negative-branch λ-rate (Aristotle `c26cb7cf`, session 88) |
 | `JepaRhoRecovery/MixedOrdering.lean` | Layer 5.1 — mixed-sign ordering |
 | `JepaRhoRecovery/Main.lean` | Top-level signed-decomposition theorem |
 | `my_theorems/paper_draft.md` | Bubeck-style paper outline (authoritative spec; auto-excluded from Aristotle tar) |
