@@ -52,8 +52,10 @@ breaking paper 1 builds. Re-evaluate after Layer 2.1 lands.
 | `JepaRhoRecovery/SignedODE.lean` | Layer 4.1 — signed-$\rho$ ODE analysis |
 | `JepaRhoRecovery/SignedRecovery.lean` | Layer 4.2 — sign identification theorem |
 | `JepaRhoRecovery/NegBranchHelpers.lean` | Bernoulli v-transform helpers for negative-branch λ-rate (Aristotle `c26cb7cf`, session 88) |
+| `JepaRhoRecovery/EarlySlopeGronwall.lean` | v-transform helpers for positive-branch early-slope Grönwall bound (Aristotle `f9276f26`/tarball `e5c8ba7e`, session 89) |
+| `JepaRhoRecovery/Concentration.lean` | Layer 3.3 — matrix Bernstein concentration named axiom (Tropp 2015 Thm 1.6.2, session 89) |
 | `JepaRhoRecovery/MixedOrdering.lean` | Layer 5.1 — mixed-sign ordering |
-| `JepaRhoRecovery/Main.lean` | Top-level signed-decomposition theorem |
+| `JepaRhoRecovery/Main.lean` | Top-level signed-decomposition theorems (`signed_decomposition` meta-theorem + `plateau_path_recovery_pos` paper-2 headline, session 89) |
 | `my_theorems/paper_draft.md` | Bubeck-style paper outline (authoritative spec; auto-excluded from Aristotle tar) |
 | `requests/` | Aristotle submission prompts |
 | `results/` | Aristotle output records |
