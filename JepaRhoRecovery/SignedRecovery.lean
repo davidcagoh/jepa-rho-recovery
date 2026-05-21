@@ -484,6 +484,9 @@ private lemma plateau_gap_time_exists
     a degenerate witness would require all five to be vacuously true
     (impossible since `hSigma_below` forces `σ < ρ^L` everywhere, while
     `hSigma_init` forces `σ(0) ≤ ε`). -/
+-- ⚠ CORRECTION NOTE (session 90, 2026-05-21): see ../CORRECTION_NOTE.md.
+-- Plateau target `ρ^L` and Lyapunov V := (σ − ρ^L)² inherit paper-1's
+-- inverted ODE convention. Correct target is ρ^(1/L). Re-derivation queued.
 theorem signed_recovery_pos_magnitude_plateau
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)

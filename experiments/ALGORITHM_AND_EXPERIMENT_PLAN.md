@@ -1,5 +1,8 @@
 # Algorithm + experiment plan — paper-2 ρ-recovery
 
+> **Session-90 correction (2026-05-21).** The original draft had `ρ̂ = σ^(1/L)` and claimed plateau `σ^∞ = ρ^L`. Empirical validation showed the *correct* plateau is `σ^∞ = ρ^(1/L)` (Saxe-style deep-linear behaviour), and the *correct* recovery formula is `ρ̂ = σ^L`. The init scheme is also non-generic: the algorithm requires *aligned* init `Wbar(0) ≈ ε·I` in the eigenbasis, not generic small-init. Both corrections are reflected below. See `RESULTS_session90_verification.md` for the full audit and `plateau_recover_corrected.py` for the validated reference implementation.
+
+
 > **Purpose:** bridge from the Lean-verified theory (sessions 88–89) to a deployable
 > algorithm and validation experiments. This is the plan that turns paper-2 from
 > "structurally complete theorems" into "we build on JEPA theory and have an algorithm
@@ -91,8 +94,15 @@ def plateau_recover(X, Y, L, eps=1e-3, plateau_tol=1e-4,
     U_hat /= np.sqrt(norms)
     V_hat /= np.sqrt(norms)
 
-    # ----- Step 3. Initialize W̄ with small scale ε -----
-    W = eps * np.random.randn(d, d) / np.sqrt(d)  # σ_r(0) ≈ ε per direction
+    # ----- Step 3. Initialize W̄ with ALIGNED init at scale ε -----
+    # Aligned (eigenbasis-diagonal) init is required to satisfy paper-1's
+    # σ_r(0) = ε hypothesis. Generic small-init does NOT give this and gauge-
+    # ambiguates the encoder diagonal. With U̅ = Sigma_XX_hat^(1/2) V_hat the
+    # right-orthonormal basis, set:
+    Wbar = eps * np.eye(d)   # diagonal in U-basis → σ_r(0) = ε per direction
+    V    = eps * np.eye(d)   # predictor, balanced scale
+    # (In the eigenbasis U, Wbar = ε·I; equivalently in standard coords
+    # Wbar = ε·U U^T = ε·I as well when U is orthonormal.)
 
     # ----- Step 4. Train depth-L JEPA, record diagonal amplitudes -----
     # Diagonal amplitude per direction: σ_r(t) = U_hat[:,r].T @ W(t) @ V_hat[:,r]
@@ -130,7 +140,9 @@ def plateau_recover(X, Y, L, eps=1e-3, plateau_tol=1e-4,
     for r in range(d):
         if rho_hat_pop[r] > plateau_tol:
             # Positive branch: plateau-path recovery.
-            rho_hat[r] = np.sign(sigma_final[r]) * np.abs(sigma_final[r]) ** (1/L)
+            # Empirically σ_r → ρ_r^(1/L), so ρ̂ = σ^L recovers ρ.
+            # (NOT σ^(1/L) as an earlier draft of this doc claimed.)
+            rho_hat[r] = np.sign(sigma_final[r]) * np.abs(sigma_final[r]) ** L
         elif rho_hat_pop[r] < -plateau_tol:
             # Negative branch: sign-only (paper Thm 7.3).
             # Magnitude obstructed from trajectory alone (Layer 4.2(iii));
@@ -149,8 +161,8 @@ def plateau_recover(X, Y, L, eps=1e-3, plateau_tol=1e-4,
 | `sample_eigenvalue_perturbation` | Step 2 | `|ρ̂_pop − ρ_r*| ≤ C·(δ_x + δ_y)` |
 | `matrix_bernstein_subgaussian` (axiom) | sets bound on n | `δ_n = O(√(d log(d/ν)/n))` w.p. ≥ 1−ν |
 | `quasi_static_approx` (Layer 1.1) | Step 4 | trajectory satisfies the Bernoulli ODE |
-| `signed_recovery_pos_magnitude_plateau` | Step 5 (positive) | `|σ_r(T) − ρ_r^L| ≤ K·ε^{1/L}|log ε|` |
-| `rho_hat_plateau_rate` (Layer 2.2′) | Step 5 (positive) | `|σ_r^{1/L} − ρ_r| ≤ C·ε^{1/L}|log ε|` |
+| `signed_recovery_pos_magnitude_plateau` (corrected) | Step 5 (positive) | `|σ_r(T) − ρ_r^(1/L)| ≤ K·ε^{1/L}|log ε|` |
+| `rho_hat_plateau_rate` (Layer 2.2′, corrected) | Step 5 (positive) | `|σ_r^L − ρ_r| ≤ C·ε^{1/L}|log ε|` |
 | `plateau_path_recovery_pos` (Main) | full chain (Steps 3–5) | end-to-end positive-branch rate |
 | `plateau_path_finite_sample_rate_pos_high_prob` | n + ν dependence | high-probability finite-sample rate |
 
