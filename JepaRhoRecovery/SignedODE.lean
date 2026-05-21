@@ -330,11 +330,12 @@ private lemma ode_rhs_pos_below_fixed_point
     `ode_rhs_pos_below_fixed_point` (wrapping `rpow_dominates_cube`)
     gives a positive lower bound on the derivative, contradicting
     boundedness. -/
--- ⚠ CORRECTION NOTE (session 90, 2026-05-21): see ../CORRECTION_NOTE.md.
--- The plateau target `ρ^L` and the ODE bracket `(1 − σ^(1/L)/ρ)` below come
--- from paper-1's inverted ODE form. Empirically the correct plateau is
--- `ρ^(1/L)` and the bracket is `(1 − σ^L/ρ)` (Saxe form). This theorem is
--- self-consistent as stated but disconnected from JEPA dynamics.
+-- ⚠ DEPRECATED (session 90, 2026-05-21). Plateau target `ρ^L` + ODE bracket
+--   `(1 − σ^(1/L)/ρ)` are the inverted form. Correct version is
+--   `Corrected.sigma_positive_branch_converges_corrected` (plateau `ρ^(1/L)`,
+--   bracket `(ρ − σ^L)`, Saxe form). Self-consistent under inverted hypotheses;
+--   preserved as historical record.
+@[deprecated "Inverted ODE form; use Corrected.sigma_positive_branch_converges_corrected"]
 theorem sigma_positive_branch_converges
     (L : ℕ) (hL : 2 ≤ L)
     (lambda rho : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)

@@ -278,12 +278,10 @@ theorem signed_decomposition
         |ρ̂(ε) − ρ| ≤ C · ε^{1/L} · |log ε|     for all ε ∈ (0, ε_0),
 
     where `ρ := λ/μ`. Sorry-free; standard axioms only. -/
--- ⚠ CORRECTION NOTE (session 90, 2026-05-21): see ../CORRECTION_NOTE.md.
--- The headline estimator `ρ̂ := σ^(1/L)` and plateau `σ → (λ/μ)^L = ρ^L`
--- come from paper-1's inverted ODE form. Correct formula is `ρ̂ := σ^L`
--- and plateau `σ → ρ^(1/L)`. Statement is algebraically self-consistent
--- with the inputs it takes; the inputs (from PlateauEstimator + SignedODE)
--- carry the same inversion. Re-derivation queued for next session.
+-- ⚠ DEPRECATED (session 90, 2026-05-21). Estimator `ρ̂ := σ^(1/L)` and
+--   plateau `σ → ρ^L` are inverted-form. Compose `Corrected.*_corrected`
+--   theorems to get the correct ρ̂ = σ^L headline. Preserved as historical.
+@[deprecated "Inverted ODE form; compose Corrected.* theorems instead"]
 theorem plateau_path_recovery_pos
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)

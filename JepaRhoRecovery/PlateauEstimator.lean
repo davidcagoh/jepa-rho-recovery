@@ -157,12 +157,12 @@ private lemma root_lipschitz_bound (sigma rho : ℝ) (L : ℕ) (hL : 1 ≤ L)
     gives `|σ^{1/L} - ρ| ≤ |σ - ρ^L| / ρ^{L-1}` (the sum is ≥ ρ^{L-1}
     from the k=0 term alone). Multiply through by the plateau hypothesis.
     Constant `C = K_plateau / ρ^{L-1}`. -/
--- ⚠ CORRECTION NOTE (session 90, 2026-05-21): see ../CORRECTION_NOTE.md.
--- The plateau hypothesis `|sigma_at_T ε - rho ^ L| ≤ ...` here uses paper-1's
--- inverted ODE-form plateau target `ρ^L`. Empirically the correct plateau is
--- `ρ^(1/L)`, and the recovery estimator should be `σ^L`, not `σ^(1/L)`. The
--- theorem statement and proof are *algebraically consistent under the wrong
--- form* — re-derivation is queued for next session (Aristotle resubmit).
+-- ⚠ DEPRECATED (session 90, 2026-05-21). Inverted-form plateau hypothesis
+--   `|sigma_at_T ε - rho^L| ≤ ...`. Correct version is `Corrected.rho_hat_plateau_rate_corrected`
+--   which uses plateau target `ρ^(1/L)` and estimator `σ^L`. This declaration
+--   is algebraically consistent under its (inverted) hypotheses but disconnected
+--   from JEPA dynamics. Preserved as historical record.
+@[deprecated "Inverted ODE form; use Corrected.rho_hat_plateau_rate_corrected"]
 theorem rho_hat_plateau_rate
     (L : ℕ) (hL : 2 ≤ L)
     (rho : ℝ) (hrho_pos : 0 < rho)

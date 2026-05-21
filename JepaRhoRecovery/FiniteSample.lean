@@ -148,6 +148,10 @@ theorem finite_sample_rate_pos
     Conclusion: the plateau-derived estimator `ρ̂_n(ε) := σ̂(ε)^{1/L}`
     satisfies, for ε in a positive sub-window,
         `|ρ̂_n(ε) − ρ_r*| ≤ C_ε · ε^{1/L} · |log ε| + δ_n`. -/
+-- ⚠ DEPRECATED (session 90, 2026-05-21). Inherits inverted-form ρ̂ := σ^(1/L)
+--   from plateau_path_recovery_pos. Corrected finite-sample composition uses
+--   ρ̂ := σ^L. Preserved as historical.
+@[deprecated "Inverted ODE form; use a corrected composition built on Corrected.* theorems"]
 theorem plateau_path_finite_sample_rate_pos
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
@@ -221,6 +225,9 @@ theorem plateau_path_finite_sample_rate_pos
     composition pattern above produces; the matrix-Bernstein axiom and
     `sample_eigenvalue_perturbation` are invoked outside this theorem
     so the signature stays clean. -/
+-- ⚠ DEPRECATED (session 90, 2026-05-21). High-probability wrapper around the
+--   inverted-form plateau_path_finite_sample_rate_pos. Preserved as historical.
+@[deprecated "Inverted ODE form; build a corrected high-prob wrapper on Corrected.* theorems"]
 theorem plateau_path_finite_sample_rate_pos_high_prob
     {d : ℕ}
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
