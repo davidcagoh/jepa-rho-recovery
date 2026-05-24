@@ -38,9 +38,9 @@ import JepaRhoRecovery.QuasiStatic
 import JepaRhoRecovery.Inversion
 import JepaRhoRecovery.SignedODE
 import JepaRhoRecovery.DiagonalODE
-import JepaRhoRecovery.CriticalTime
 import JepaRhoRecovery.NegBranchHelpers
 import JepaRhoRecovery.EarlySlopeGronwall
+import JepaRhoRecovery.Saxe
 
 set_option linter.style.longLine false
 set_option linter.style.whitespace false
@@ -65,30 +65,48 @@ variable {d : ℕ}
     these forwards by case-analysis on `sign (eb.pairs r).rho`.
 -/
 
-/-- **Theorem 4.2(i⁺) (Positive branch — convergence to ρ^L).**
+/-- **Theorem 4.2(i⁺) (Positive branch — convergence to ρ^(1/L), Saxe form).**
 
-    For features with `ρ_r* > 0`, the diagonal amplitude `σ_r(t)`
-    converges to the positive fixed point `(ρ_r*)^L` as `t → ∞`.
+    For features with `ρ_r* > 0`, the diagonal amplitude `σ_r(t)` driven
+    by the Saxe-form ODE
+        `σ̇ = L · μ_r · σ^{2 − 1/L} · (ρ_r* − σ^L)`
+    converges to the Saxe plateau `(ρ_r*)^{1/L}` as `t → ∞`.
 
-    Direct wrapper of `sigma_positive_branch_converges` (Layer 4.1(a′),
-    Aristotle `22e700ca`, sorry-free). -/
+    Direct wrapper of `Saxe.sigma_positive_branch_converges`
+    (sorry-free, session 90). The Saxe ODE form's `(λ/μ)` parameter is
+    instantiated at `λ = ρ_r* · μ_r` so that `λ/μ = ρ_r*` and the
+    plateau equals `(ρ_r*)^{1/L}`. -/
 theorem sign_identification_pos_forward
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
     (r : Fin d)
     (hrho_pos : 0 < (eb.pairs r).rho)
-    (lambda : ℝ) (hlam_pos : 0 < lambda)
     (sigma : ℝ → ℝ)
     (hSigma_pos : ∀ t : ℝ, 0 ≤ t → 0 < sigma t)
-    (hSigma_below : ∀ t : ℝ, 0 ≤ t → sigma t < (eb.pairs r).rho ^ L)
+    (hSigma_below : ∀ t : ℝ, 0 ≤ t →
+        sigma t < Real.rpow ((eb.pairs r).rho) ((1 : ℝ) / L))
     (hSigma_cont : Continuous sigma)
     (hSigma_ode : ∀ t : ℝ, 0 < t →
       HasDerivAt sigma
-        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
-          - (lambda / (eb.pairs r).rho) * (sigma t) ^ 3) t) :
-    Filter.Tendsto sigma Filter.atTop (nhds ((eb.pairs r).rho ^ L)) := by
-  exact sigma_positive_branch_converges L hL lambda (eb.pairs r).rho
-    hlam_pos hrho_pos sigma hSigma_pos hSigma_below hSigma_cont hSigma_ode
+        ((L : ℝ) * (eb.pairs r).mu *
+          Real.rpow (sigma t) (2 - 1 / (L : ℝ)) *
+          ((eb.pairs r).rho - (sigma t) ^ L)) t) :
+    Filter.Tendsto sigma Filter.atTop
+      (nhds (Real.rpow ((eb.pairs r).rho) ((1 : ℝ) / L))) := by
+  -- Instantiate the Saxe-form lemma with `λ := ρ · μ`, `μ := μ`.
+  -- Then `λ/μ = ρ`, so the plateau `(λ/μ)^{1/L}` equals `ρ^{1/L}`.
+  set lambda : ℝ := (eb.pairs r).rho * (eb.pairs r).mu with hlam_def
+  have hlam_pos : 0 < lambda := mul_pos hrho_pos (eb.pairs r).hmu_pos
+  have hmu_pos : 0 < (eb.pairs r).mu := (eb.pairs r).hmu_pos
+  have hdiv : lambda / (eb.pairs r).mu = (eb.pairs r).rho := by
+    rw [hlam_def]; field_simp
+  have h := sigma_positive_branch_converges L hL lambda (eb.pairs r).mu
+    hlam_pos hmu_pos sigma
+    (by simpa [hdiv] using hSigma_pos)
+    (by intro t ht; rw [hdiv]; exact hSigma_below t ht)
+    hSigma_cont
+    (by intro t ht; rw [hdiv]; exact hSigma_ode t ht)
+  simpa [hdiv] using h
 
 /-- **Theorem 4.2(i⁰) (Zero branch — trajectory is constant at initial value).**
 
@@ -201,145 +219,83 @@ theorem signed_recovery_pos_magnitude
     have hpow : 0 ≤ ε ^ ((1 : ℝ) / L) := Real.rpow_nonneg hε_pos.le _
     positivity
 
-/-- **Theorem 4.2(ii′) (Positive-magnitude recovery, JEPA-concrete form).**
+/-- **Theorem 4.2(ii′) (Positive-magnitude recovery, JEPA-concrete Saxe form).**
 
-    Closes the loop from JEPA dynamics to ρ̂ recovery without
-    parametrising over abstract Laurent inputs. Combines:
-      * `purified_critical_time_signed` (Path C bridge, `CriticalTime.lean`)
-        — produces the Inversion-shape Laurent expansion from the JEPA
-        diagonal-amplitude trajectory.
-      * `signed_recovery_pos_magnitude` (above) — consumes that Laurent
-        and produces the estimator + rate.
+    Saxe-form replacement for the inverted-form Path-C jepa wrapper.
+    Closes the loop from JEPA dynamics under the Saxe ODE
+        `σ̇ = L · μ_r · σ^{2 − 1/L} · (ρ_r* − σ^L)`
+    to ρ̂ recovery via the plateau-path estimator `ρ̂(ε) := σ_r(T(ε))^L`.
 
-    Per `wiki/decisions.md` session 78, the bridge between the raw
-    paper-1 critical-time Laurent (ρ-INDEPENDENT leading term
-    `ε^{-(2L-1)/L}`) and the Inversion-shape ρ-DEPENDENT Laurent
-    (leading term `ε^{-1/L}`) is the *purified hitting time* — see
-    `CriticalTime.purified_hitting_time` for the closed-form transform.
+    Composes:
+      * `Saxe.signed_recovery_pos_magnitude_plateau` —
+        produces an observation-time schedule `T(ε)` such that the
+        trajectory at `T(ε)` is within `K · ε^{1/L} · |log ε|` of the
+        Saxe plateau `(ρ_r*)^{1/L}`.
+      * `Saxe.rho_hat_plateau_rate` — pure algebra: lifts
+        the plateau bound to the estimator bound `|σ^L − ρ_r*| ≤ C · ε^{1/L} · |log ε|`.
 
-    The bridge carries one envelope-sharpening named sorry
-    (`purified_laurent_bound`); both this theorem and the entire
-    inversion chain are otherwise sorry-free.
--/
+    Sorry-free; consumes only sorry-free Saxe-form lemmas. -/
 theorem signed_recovery_pos_magnitude_jepa
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
     (r : Fin d)
     (hrho_pos : 0 < (eb.pairs r).rho)
-    (t_max : ℝ) (ht_max : 0 < t_max)
-    (p : ℝ) (hp : 0 < p) (hp_lt : p < 1)
-    (C_ode : ℝ) (hC_ode : 0 < C_ode)
-    -- ε_max < 1 (session 82): domain restriction for `purified_laurent_bound`
-    -- envelope. Typical choice ε_max := exp(-1); the bridge bound
-    -- K_log·|log ε| is only meaningful for ε bounded away from 1.
-    (ε_max : ℝ) (hε_max_pos : 0 < ε_max) (hε_max_lt : ε_max < 1) :
-    -- Path C (session 78, refined session 82): per-Wbar witness, explicit
-    -- inversion formula (no separate rho_hat function — the estimator value
-    -- IS the formula applied at t_crit Wbar ε). Each trajectory has its own
-    -- (ε_0, C). Conclusion ranges over ε < min(ε_0, ε_max).
-    ∃ (t_crit : (ℝ → Matrix (Fin d) (Fin d) ℝ) → ℝ → ℝ),
-      ∀ (Wbar : ℝ → Matrix (Fin d) (Fin d) ℝ),
-      ∃ (ε_0 C : ℝ), 0 < ε_0 ∧ 0 < C ∧
-        ∀ (ε : ℝ), 0 < ε → ε < ε_0 → ε < ε_max →
-        -- Statement-honesty (2026-05-20): `t_max` sufficient for the
-        -- JEPA diagonal amplitude to reach the threshold within the
-        -- compact interval. Matches `purified_laurent_bound`'s
-        -- `t_max`-sufficiency hypothesis.
-        (2 * (L : ℝ)) / (projectedCovariance dat eb r
-            * ε ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max →
-        diagAmplitude dat eb (Wbar 0) r = ε →
-        ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r)
-                     (Set.Icc 0 t_max) →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) →
-        (∀ t ∈ Set.Ioo 0 t_max,
-          |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
-           - ((L : ℝ) * projectedCovariance dat eb r
-                * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / L)
-                * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L)
-                       / (eb.pairs r).rho))|
-          ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) →
-        hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
-                    (p * (eb.pairs r).rho ^ L) t_max < t_max →
-        |((L : ℝ) / (projectedCovariance dat eb r * t_crit Wbar ε
-                       * ε ^ ((1 : ℝ) / L)))
-              ^ ((1 : ℝ) / (2 * (L : ℝ) - 2))
-          - (eb.pairs r).rho|
-          ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
-  -- Step 1: obtain Path C bridge.
-  obtain ⟨t_crit, K_log, hK_log_pos, hbridge⟩ :=
-    purified_critical_time_signed dat eb L hL t_max ht_max p hp hp_lt r
-      hrho_pos C_ode hC_ode ε_max hε_max_pos hε_max_lt
-  refine ⟨t_crit, fun Wbar => ?_⟩
-  have hlam_pos : 0 < projectedCovariance dat eb r := by
-    unfold projectedCovariance
-    exact mul_pos hrho_pos (eb.pairs r).hmu_pos
-  set ρ := (eb.pairs r).rho with hρ_def
-  set lam := projectedCovariance dat eb r with hlam_def
-  -- Step 2: build a Wbar-specific auxiliary critical-time t_aux satisfying
-  -- a UNIVERSAL Laurent bound (residual ≤ K_log·|log ε| for all ε∈(0,1)).
-  -- Construction: on ε's where the JEPA window holds for this Wbar
-  --   (i.e. diagAmplitude(Wbar 0) r = ε ∧ ODE residual bound at ε),
-  --   t_aux ε := t_crit Wbar ε (residual ≤ K_log·|log ε| by hbridge);
-  -- otherwise t_aux ε := the asymptotic sum itself (residual = 0).
-  -- This is a classical case-split via Classical.propDecidable.
-  classical
-  let asyTerm : ℝ → ℝ := fun ε =>
-    (1 / lam) * ∑ n ∈ Finset.Ioc 0 (2 * L - 1),
-      (L : ℝ) / ((n : ℝ) * ρ ^ (2 * L - n - 1)) *
-        ε ^ (((n : ℝ) - 2) / (L : ℝ))
-  let JEPAwindow : ℝ → Prop := fun ε =>
-    (2 * (L : ℝ)) / (lam * ε ^ ((2 * (L : ℝ) - 1) / (L : ℝ))) ≤ t_max ∧
-    diagAmplitude dat eb (Wbar 0) r = ε ∧
-    ContinuousOn (fun s => diagAmplitude dat eb (Wbar s) r) (Set.Icc 0 t_max) ∧
-    (∀ t ∈ Set.Ioo 0 t_max,
-      DifferentiableAt ℝ (fun s => diagAmplitude dat eb (Wbar s) r) t) ∧
-    (∀ t ∈ Set.Ioo 0 t_max,
-      |deriv (fun s => diagAmplitude dat eb (Wbar s) r) t
-       - ((L : ℝ) * lam
-            * Real.rpow (diagAmplitude dat eb (Wbar t) r) (3 - 1 / L)
-            * (1 - Real.rpow (diagAmplitude dat eb (Wbar t) r) (1 / L) / ρ))|
-      ≤ C_ode * ε ^ ((2 * (L : ℝ) - 1) / L)) ∧
-    hittingTime (fun t => diagAmplitude dat eb (Wbar t) r)
-                (p * (eb.pairs r).rho ^ L) t_max < t_max
-  let t_aux : ℝ → ℝ := fun ε =>
-    if JEPAwindow ε ∧ ε < ε_max then t_crit Wbar ε else asyTerm ε
-  -- Step 3: prove the universal Laurent for t_aux (session 82: tightened to
-  -- require ε < ε_max in the in-window branch since the bridge envelope
-  -- |log ε| is only meaningful for ε bounded away from 1).
-  have h_aux_laurent : ∀ ε : ℝ, 0 < ε → ε < 1 →
-      |t_aux ε - asyTerm ε| ≤ K_log * |Real.log ε| := by
-    intro ε hε_pos _hε_lt_one
-    by_cases hw : JEPAwindow ε ∧ ε < ε_max
-    · -- In-window AND ε < ε_max: bridge bounds the residual.
-      simp only [t_aux, if_pos hw]
-      obtain ⟨⟨ht_max_reach, hwbar_init, hcont, hdiff, hode, h_reach⟩,
-              hε_lt_max⟩ := hw
-      have := hbridge Wbar ε hε_pos hε_lt_max ht_max_reach hwbar_init
-                hcont hdiff hode h_reach
-      simpa [asyTerm, hlam_def, hρ_def] using this
-    · -- Out-of-window OR ε ≥ ε_max: t_aux ε = asyTerm ε; residual = 0.
-      simp only [t_aux, if_neg hw, sub_self, abs_zero]
-      have hlog : 0 ≤ |Real.log ε| := abs_nonneg _
-      exact mul_nonneg hK_log_pos.le hlog
-  -- Step 4: apply rho_hat_rate to t_aux to extract (ε_0, C).
-  obtain ⟨ε_0, C, hε_0_pos, _hε_0_lt_one, hC_pos, hbound⟩ :=
-    rho_hat_rate L hL lam ρ hrho_pos hlam_pos t_aux K_log hK_log_pos
-      (by intro ε hε_pos hε_lt; simpa [asyTerm, hlam_def, hρ_def] using
-            h_aux_laurent ε hε_pos hε_lt)
-  refine ⟨ε_0, C, hε_0_pos, hC_pos, ?_⟩
-  intro ε hε_pos hε_lt_ε_0 hε_lt_max ht_max_reach hwbar_init hcont hdiff hode h_reach
-  -- Step 5: under JEPA hyps AND ε < ε_max, t_aux ε = t_crit Wbar ε, so the
-  -- formula in t_aux equals the formula in t_crit Wbar. Apply hbound and
-  -- rewrite.
-  have hwindow : JEPAwindow ε ∧ ε < ε_max :=
-    ⟨⟨ht_max_reach, hwbar_init, hcont, hdiff, hode, h_reach⟩, hε_lt_max⟩
-  have h_eq : t_aux ε = t_crit Wbar ε := by simp [t_aux, if_pos hwindow]
-  have := hbound ε hε_pos hε_lt_ε_0
-  -- hbound: |((L / (lam * t_aux ε * ε^{1/L}))^{1/(2L-2)}) − ρ| ≤ C·ε^{1/L}·|log ε|
-  -- Goal:   |((L / (lam * t_crit Wbar ε * ε^{1/L}))^{1/(2L-2)}) − ρ| ≤ same
-  simp only [h_eq] at this
-  exact this
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_below : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t →
+        sigma ε t < Real.rpow ((eb.pairs r).rho) ((1 : ℝ) / L))
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        ((L : ℝ) * (eb.pairs r).mu *
+          Real.rpow (sigma ε t) (2 - 1 / (L : ℝ)) *
+          ((eb.pairs r).rho - (sigma ε t) ^ L)) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 ≤ ε) :
+    -- Saxe plateau-path: pick T(ε); estimator is `σ(ε, T(ε))^L`; rate is
+    -- `O(ε^{1/L} · |log ε|)`.
+    ∃ (T : ℝ → ℝ) (ε_0 C : ℝ), 0 < ε_0 ∧ ε_0 < 1 ∧ 0 < C ∧
+      (∀ ε : ℝ, 0 < ε → ε < ε_0 → 0 < T ε) ∧
+      (∀ ε : ℝ, 0 < ε → ε < ε_0 →
+        |(sigma ε (T ε)) ^ L - (eb.pairs r).rho|
+          ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
+  -- Step 1: invoke Saxe plateau bridge. Use λ := ρ · μ so λ/μ = ρ;
+  -- the Saxe bridge then produces T(ε) with the trajectory bound to
+  -- `ρ^{1/L}` at rate `K · ε^{1/L} · |log ε|`.
+  set lambda : ℝ := (eb.pairs r).rho * (eb.pairs r).mu with hlam_def
+  have hlam_pos : 0 < lambda := mul_pos hrho_pos (eb.pairs r).hmu_pos
+  have hmu_pos : 0 < (eb.pairs r).mu := (eb.pairs r).hmu_pos
+  have hdiv : lambda / (eb.pairs r).mu = (eb.pairs r).rho := by
+    rw [hlam_def]; field_simp
+  -- Convert each per-ε Saxe hypothesis from the `ρ` form to the `λ/μ` form.
+  have hSigma_below' : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t →
+      sigma ε t < Real.rpow (lambda / (eb.pairs r).mu) ((1 : ℝ) / L) := by
+    intro ε hε hε1 t ht; rw [hdiv]; exact hSigma_below ε hε hε1 t ht
+  have hSigma_ode' : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        ((L : ℝ) * (eb.pairs r).mu *
+          Real.rpow (sigma ε t) (2 - 1 / (L : ℝ)) *
+          (lambda / (eb.pairs r).mu - (sigma ε t) ^ L)) t := by
+    intro ε hε hε1 t ht; rw [hdiv]; exact hSigma_ode ε hε hε1 t ht
+  obtain ⟨T, K_plat, hK_plat_pos, hT_pos, h_plat⟩ :=
+    signed_recovery_pos_magnitude_plateau L hL lambda
+      (eb.pairs r).mu hlam_pos hmu_pos sigma hSigma_pos hSigma_below'
+      hSigma_cont hSigma_ode' hSigma_init
+  -- Step 2: pure-algebra plateau → estimator via Saxe `rho_hat_plateau_rate`.
+  -- Apply per-ε with `sigma_at_T ε := sigma ε (T ε)`. The Saxe lemma takes the
+  -- plateau hypothesis universally over ε ∈ (0,1).
+  have h_plat_rho : ∀ ε : ℝ, 0 < ε → ε < 1 →
+      |sigma ε (T ε) - Real.rpow ((eb.pairs r).rho) ((1 : ℝ) / L)|
+        ≤ K_plat * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    intro ε hε hε1
+    have := h_plat ε hε hε1
+    simpa [hdiv] using this
+  obtain ⟨ε_0, C, hε0_pos, hε0_lt1, hC_pos, hbound⟩ :=
+    rho_hat_plateau_rate L hL (eb.pairs r).rho hrho_pos
+      (fun ε => sigma ε (T ε)) K_plat hK_plat_pos h_plat_rho
+  -- Step 3: assemble. T(ε) > 0 inherited from the Saxe bridge.
+  refine ⟨T, ε_0, C, hε0_pos, hε0_lt1, hC_pos, ?_, ?_⟩
+  · intro ε hε hε_lt; exact hT_pos ε hε (hε_lt.trans hε0_lt1)
+  · exact hbound
 
 /-! ## §4.2(iii) — Negative-magnitude obstruction -/
 
@@ -390,16 +346,15 @@ theorem signed_recovery_neg_magnitude_obstruction
   · exact sigma_negative_branch_le_init L hL (-1) (-2) (by norm_num) (by norm_num)
       t_max ht_max sigma₂ hPos₂ hCont₂ hODE₂ t ht
 
-/-! ## §4.1-bridge — Trajectory → plateau-rate hypothesis (paper Thm 5.1′ bridge)
+/-! ## §4.1-bridge — DELETED (Phase 3′-B, session 99).
 
-    Bridges the qualitative `sigma_positive_branch_converges` (Aristotle
-    `22e700ca`) to the QUANTITATIVE plateau-approach bound consumed by
-    `PlateauEstimator.rho_hat_plateau_rate`. Pure ODE work: Lyapunov-style
-    rate of approach to the fixed point ρ^L. -/
+    The inverted-form plateau bridge `signed_recovery_pos_magnitude_plateau`
+    and its two private helpers (`plateau_convergence_per_eps`,
+    `plateau_gap_time_exists`) are superseded by
+    `Saxe.signed_recovery_pos_magnitude_plateau`, consumed by the
+    Saxe-form `signed_recovery_pos_magnitude_jepa` above. -/
 
-/-- Helper: the ODE `σ̇ = λσ^{3-1/L} − μσ³` with `ρ = λ/μ` matches the
-    form `σ̇ = λσ^{3-1/L} − (λ/ρ)σ³` consumed by
-    `sigma_positive_branch_converges`. -/
+/- DELETED — Phase 3′-B.
 private lemma plateau_convergence_per_eps
     (L : ℕ) (hL : 2 ≤ L) (lambda mu : ℝ)
     (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
@@ -485,9 +440,9 @@ private lemma plateau_gap_time_exists
     (impossible since `hSigma_below` forces `σ < ρ^L` everywhere, while
     `hSigma_init` forces `σ(0) ≤ ε`). -/
 -- ⚠ DEPRECATED (session 90, 2026-05-21). Plateau target `ρ^L` (inverted form).
---   Correct version is `Corrected.signed_recovery_pos_magnitude_plateau_corrected`
+--   Correct version is `Corrected.signed_recovery_pos_magnitude_plateau`
 --   with target `ρ^(1/L)`. Preserved as historical record.
-@[deprecated "Inverted ODE form; use Corrected.signed_recovery_pos_magnitude_plateau_corrected"]
+@[deprecated "Inverted ODE form; use Corrected.signed_recovery_pos_magnitude_plateau"]
 theorem signed_recovery_pos_magnitude_plateau
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
@@ -525,6 +480,7 @@ theorem signed_recovery_pos_magnitude_plateau
     simp only [dif_pos hcond]
     have hb := (h_each ε hε hε1).choose_spec.2
     linarith [hb]
+-/
 
 /-! ## §4.1-bridge — Trajectory → early-slope ε^{(L+1)/L} perturbation
     (paper Thm 5.2 bridge)

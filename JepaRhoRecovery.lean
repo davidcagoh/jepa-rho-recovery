@@ -1,5 +1,4 @@
 import JepaRhoRecovery.Basic
-import JepaRhoRecovery.CriticalTime
 import JepaRhoRecovery.QuasiStatic
 import JepaRhoRecovery.Inversion
 import JepaRhoRecovery.PlateauEstimator

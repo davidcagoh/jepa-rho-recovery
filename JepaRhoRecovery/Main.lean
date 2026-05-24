@@ -266,22 +266,10 @@ theorem signed_decomposition
     bound → ρ̂ rate; session 87) into a single statement.
 -/
 
-/-- **Theorem (Plateau-path positive-branch ρ-recovery — paper-2 headline).**
-
-    Given a positive-branch Bernoulli ODE trajectory bundle
-    `σ : ℝ → ℝ → ℝ` with `σ(ε, ·)` a strict-sub-plateau solution of
-    `σ̇ = λ σ^{3-1/L} − μ σ³` starting at most at `ε`, there exists an
-    observation-time schedule `T(ε) > 0` and constants `ε_0, C > 0`
-    such that the estimator `ρ̂(ε) := σ(ε, T(ε))^{1/L}` is positive
-    and satisfies
-
-        |ρ̂(ε) − ρ| ≤ C · ε^{1/L} · |log ε|     for all ε ∈ (0, ε_0),
-
-    where `ρ := λ/μ`. Sorry-free; standard axioms only. -/
--- ⚠ DEPRECATED (session 90, 2026-05-21). Estimator `ρ̂ := σ^(1/L)` and
---   plateau `σ → ρ^L` are inverted-form. Compose `Corrected.*_corrected`
---   theorems to get the correct ρ̂ = σ^L headline. Preserved as historical.
-@[deprecated "Inverted ODE form; compose Corrected.* theorems instead"]
+-- DELETED — Phase 3′-B, session 99.
+-- Inverted-form `plateau_path_recovery_pos` superseded by the Saxe
+-- composition realised inline in `SignedRecovery.signed_recovery_pos_magnitude_jepa`.
+/-
 theorem plateau_path_recovery_pos
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
@@ -328,5 +316,6 @@ theorem plateau_path_recovery_pos
     have hσ_pos : 0 < sigma ε (T ε) := hSigma_pos ε hε hε1 (T ε) hT_ε_pos.le
     exact Real.rpow_pos_of_pos hσ_pos _
   · exact h_rate
+-/
 
 end JepaRhoRecovery

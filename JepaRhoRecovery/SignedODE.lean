@@ -315,27 +315,15 @@ private lemma ode_rhs_pos_below_fixed_point
   gcongr;
   exact lt_of_lt_of_le ( Real.rpow_lt_rpow hs_pos.le hs_lt ( by positivity ) ) ( by rw [ ← Real.rpow_natCast, ← Real.rpow_mul ( by positivity ), mul_inv_cancel₀ ( by positivity ), Real.rpow_one ] )
 
-/-- **Theorem 4.1(a′) (Positive-branch convergence).**
+-- DELETED — Phase 3′-B, session 99.
+-- Inverted-form `sigma_positive_branch_converges` superseded by
+-- `Saxe.sigma_positive_branch_converges`.
+/-
+**Theorem 4.1(a′) (Positive-branch convergence).** Stronger companion
+to `sigma_positive_branch_monotone`; with the inverted-form ODE on
+`[0, ∞)` and `σ(t) < ρ^L`, the diagonal amplitude converges to `ρ^L`.
 
-    Stronger companion to `sigma_positive_branch_monotone`. With the same
-    ODE on the half-line `[0, ∞)` and the same bound `σ(t) < ρ^L`, the
-    diagonal amplitude converges to the fixed point `ρ^L` as `t → ∞`.
-
-    This is the convergence statement consumed by Layer 4.2(i)
-    (`sign_identification_pos_iff_asymptote`) — the monotonicity lemma
-    alone is not enough to identify the asymptote.
-
-    Proved by Aristotle job `22e700ca` (session 77): supremum via
-    `tendsto_atTop_ciSup` on `t ↦ σ(max t 0)`; if `σ_∞ < ρ^L`, MVT +
-    `ode_rhs_pos_below_fixed_point` (wrapping `rpow_dominates_cube`)
-    gives a positive lower bound on the derivative, contradicting
-    boundedness. -/
--- ⚠ DEPRECATED (session 90, 2026-05-21). Plateau target `ρ^L` + ODE bracket
---   `(1 − σ^(1/L)/ρ)` are the inverted form. Correct version is
---   `Corrected.sigma_positive_branch_converges_corrected` (plateau `ρ^(1/L)`,
---   bracket `(ρ − σ^L)`, Saxe form). Self-consistent under inverted hypotheses;
---   preserved as historical record.
-@[deprecated "Inverted ODE form; use Corrected.sigma_positive_branch_converges_corrected"]
+@[deprecated "Inverted ODE form; use Corrected.sigma_positive_branch_converges"]
 theorem sigma_positive_branch_converges
     (L : ℕ) (hL : 2 ≤ L)
     (lambda rho : ℝ) (hlam_pos : 0 < lambda) (hrho_pos : 0 < rho)
@@ -393,5 +381,6 @@ theorem sigma_positive_branch_converges
       exact fun x y hxy => this ( show 0 ≤ Max.max x 0 by positivity ) ( show 0 ≤ Max.max y 0 by positivity ) ( max_le_max hxy le_rfl );
     · exact ⟨ rho ^ L, Set.forall_mem_range.mpr fun t => le_of_lt ( hSigma_below _ ( le_max_right _ _ ) ) ⟩;
   exact h_sigma_conv.congr' ( by filter_upwards [ Filter.eventually_ge_atTop 0 ] with t ht; rw [ max_eq_left ht ] )
+-/
 
 end JepaRhoRecovery

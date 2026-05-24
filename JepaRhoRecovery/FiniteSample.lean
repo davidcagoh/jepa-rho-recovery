@@ -132,26 +132,14 @@ theorem finite_sample_rate_pos
     statement on the good event, and the conclusion bounds the
     estimator error on the same event. -/
 
-/-- **Theorem 3.2′ (Plateau-path finite-sample ρ-recovery, positive branch).**
+-- DELETED — Phase 3′-B, session 99.
+-- Inverted-form plateau-path finite-sample wrapper superseded by
+-- the Saxe-form composition of `signed_recovery_pos_magnitude_jepa`
+-- with `sample_eigenvalue_perturbation`.
+/-
+**Theorem 3.2′ (Plateau-path finite-sample ρ-recovery, positive branch).**
+Inverted-form composition.
 
-    Given:
-      * A sample-side observation-time function `T_hat : ℝ → ℝ` and the
-        corresponding sample trajectory value `σ̂(ε) := σ_n(T_hat(ε))`,
-        satisfying the plateau bound
-          `|σ̂(ε) − ρ̂_pop^L| ≤ K_plateau · ε^{1/L} · |log ε|`
-        from `signed_recovery_pos_magnitude_plateau` applied to the
-        sample-side trajectory (with sample-side `ρ̂_pop`).
-      * A sample-eigenvalue perturbation bound
-          `|ρ̂_pop − ρ_r*| ≤ δ_n`
-        from `sample_eigenvalue_perturbation` (Layer 3.1).
-
-    Conclusion: the plateau-derived estimator `ρ̂_n(ε) := σ̂(ε)^{1/L}`
-    satisfies, for ε in a positive sub-window,
-        `|ρ̂_n(ε) − ρ_r*| ≤ C_ε · ε^{1/L} · |log ε| + δ_n`. -/
--- ⚠ DEPRECATED (session 90, 2026-05-21). Inherits inverted-form ρ̂ := σ^(1/L)
---   from plateau_path_recovery_pos. Corrected finite-sample composition uses
---   ρ̂ := σ^L. Preserved as historical.
-@[deprecated "Inverted ODE form; use a corrected composition built on Corrected.* theorems"]
 theorem plateau_path_finite_sample_rate_pos
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
     (L : ℕ) (hL : 2 ≤ L)
@@ -191,6 +179,7 @@ theorem plateau_path_finite_sample_rate_pos
         + |rho_hat_pop - (eb.pairs r).rho| := abs_sub_le _ _ _
     _ ≤ C_plat * ε ^ ((1 : ℝ) / L) * |Real.log ε| + delta_n :=
         add_le_add h_plat_term h_perturbation
+-/
 
 /-! ## §3.3 — High-probability lift (measure-theoretic plumbing)
 
@@ -215,19 +204,8 @@ theorem plateau_path_finite_sample_rate_pos
           `μ{ω : rate holds} ≥ μ(G_B) ≥ 1 − ν`.
 -/
 
-/-- **Theorem (Plateau-path finite-sample rate — high-probability form).**
-
-    Pure measure-theoretic lift: given a measurable "good event" `G`
-    with `μ(G) ≥ 1 − ν` on which the deterministic finite-sample rate
-    holds pointwise, the rate holds with probability ≥ `1 − ν`.
-
-    The deterministic rate hypothesis `h_rate_on_G` is what the
-    composition pattern above produces; the matrix-Bernstein axiom and
-    `sample_eigenvalue_perturbation` are invoked outside this theorem
-    so the signature stays clean. -/
--- ⚠ DEPRECATED (session 90, 2026-05-21). High-probability wrapper around the
---   inverted-form plateau_path_finite_sample_rate_pos. Preserved as historical.
-@[deprecated "Inverted ODE form; build a corrected high-prob wrapper on Corrected.* theorems"]
+-- DELETED — Phase 3′-B, session 99. Inverted-form high-prob wrapper.
+/-
 theorem plateau_path_finite_sample_rate_pos_high_prob
     {d : ℕ}
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
@@ -270,5 +248,6 @@ theorem plateau_path_finite_sample_rate_pos_high_prob
     (MeasureTheory.measure_lt_top (μ : MeasureTheory.Measure Ω) A).ne
   have h_toReal := ENNReal.toReal_mono h_finite h_mono
   linarith [hG_prob]
+-/
 
 end JepaRhoRecovery

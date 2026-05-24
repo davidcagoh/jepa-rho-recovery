@@ -93,11 +93,13 @@ private lemma eps_rpow_log_eventually_small
   have := Metric.tendsto_nhdsWithin_nhds.mp h_tendsto δ hδ;
   obtain ⟨ ε_0, hε_0₁, hε_0₂ ⟩ := this; exact ⟨ Min.min ε_0 1 / 2, by positivity, by linarith [ min_le_left ε_0 1, min_le_right ε_0 1 ], fun ε hε₁ hε₂ => by linarith [ abs_lt.mp ( hε_0₂ hε₁ ( by rw [ dist_comm ] ; exact abs_lt.mpr ⟨ by linarith [ min_le_left ε_0 1, min_le_right ε_0 1 ], by linarith [ min_le_left ε_0 1, min_le_right ε_0 1 ] ⟩ ) ) ] ⟩ ;
 
-/-! ### Helpers for `rho_hat_plateau_rate` -/
+/-! ### DELETED — Phase 3′-B, session 99.
 
-/-
-Identity: `(rho ^ L) ^ ((1:ℝ)/L) = rho` for `rho > 0` and `L ≥ 1`.
--/
+The inverted-form `rho_hat_plateau_rate` and its two private helpers
+(`rpow_pow_inv_cancel`, `root_lipschitz_bound`) are superseded by
+`Saxe.rho_hat_plateau_rate` in `Saxe.lean`. -/
+
+/- DELETED — Phase 3′-B.
 private lemma rpow_pow_inv_cancel (rho : ℝ) (L : ℕ) (hrho : 0 < rho) (hL : 1 ≤ L) :
     Real.rpow (rho ^ L) ((1 : ℝ) / L) = rho := by
   norm_num [ ← Real.rpow_natCast, ← Real.rpow_mul hrho.le, mul_inv_cancel₀ ( by positivity : ( L : ℝ ) ≠ 0 ) ]
@@ -158,11 +160,11 @@ private lemma root_lipschitz_bound (sigma rho : ℝ) (L : ℕ) (hL : 1 ≤ L)
     from the k=0 term alone). Multiply through by the plateau hypothesis.
     Constant `C = K_plateau / ρ^{L-1}`. -/
 -- ⚠ DEPRECATED (session 90, 2026-05-21). Inverted-form plateau hypothesis
---   `|sigma_at_T ε - rho^L| ≤ ...`. Correct version is `Corrected.rho_hat_plateau_rate_corrected`
+--   `|sigma_at_T ε - rho^L| ≤ ...`. Correct version is `Corrected.rho_hat_plateau_rate`
 --   which uses plateau target `ρ^(1/L)` and estimator `σ^L`. This declaration
 --   is algebraically consistent under its (inverted) hypotheses but disconnected
 --   from JEPA dynamics. Preserved as historical record.
-@[deprecated "Inverted ODE form; use Corrected.rho_hat_plateau_rate_corrected"]
+@[deprecated "Inverted ODE form; use Corrected.rho_hat_plateau_rate"]
 theorem rho_hat_plateau_rate
     (L : ℕ) (hL : 2 ≤ L)
     (rho : ℝ) (hrho_pos : 0 < rho)
@@ -193,6 +195,7 @@ theorem rho_hat_plateau_rate
     _ ≤ (K_plateau * ε ^ ((1 : ℝ) / L) * |Real.log ε|) / rho ^ (L - 1) :=
           div_le_div_of_nonneg_right h_bound h_rhoL_pos.le
     _ = K_plateau / rho ^ (L - 1) * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by ring
+-/
 
 /-! ## §5.2 — Early-time slope estimator for λ_r* (positive branch)
 

@@ -24,12 +24,12 @@ counterpart in `PlateauEstimator.lean` / `SignedODE.lean` /
 
 The three corrected lemmas:
 
-1. `rho_hat_plateau_rate_corrected` — pure algebra,
+1. `rho_hat_plateau_rate` — pure algebra,
    plateau hypothesis `|σ − ρ^{1/L}| ≤ K · ε^{1/L} |log ε|` gives
    the estimator bound `|σ^L − ρ| ≤ C · ε^{1/L} |log ε|`.
-2. `sigma_positive_branch_converges_corrected` — qualitative
+2. `sigma_positive_branch_converges` — qualitative
    convergence σ → ρ^{1/L} under the Saxe ODE.
-3. `signed_recovery_pos_magnitude_plateau_corrected` — bridge
+3. `signed_recovery_pos_magnitude_plateau` — bridge
    from qualitative convergence to quantitative plateau rate.
 -/
 
@@ -70,7 +70,7 @@ This is the inverse of `PlateauEstimator.rho_hat_plateau_rate` (the
 inverted-form version): there, the input plateau target was `ρ^L`
 and the estimator was `σ^{1/L}`; here both are flipped.
 -/
-theorem rho_hat_plateau_rate_corrected
+theorem rho_hat_plateau_rate
     (L : ℕ) (hL : 2 ≤ L)
     (rho : ℝ) (hrho_pos : 0 < rho)
     (sigma_at_T : ℝ → ℝ)
@@ -153,7 +153,7 @@ but with the corrected plateau:
 The proof in `SignedODE.sigma_positive_branch_converges` should transfer
 with the bracket-form swap; the structure is identical.
 -/
-theorem sigma_positive_branch_converges_corrected
+theorem sigma_positive_branch_converges
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlam_pos : 0 < lambda) (hmu_pos : 0 < mu)
     (sigma : ℝ → ℝ)
@@ -229,7 +229,7 @@ trajectory-derived observation time `T(ε)` at which
 
 **Proof strategy** — mirror Aristotle job `113fdc42` (the inverted-form
 version):
-  1. Apply qualitative `sigma_positive_branch_converges_corrected` to
+  1. Apply qualitative `sigma_positive_branch_converges` to
      each ε-slice to get convergence to `(λ/μ)^{1/L}`.
   2. Use `Metric.tendsto_atTop` to extract, for each ε, an observation
      time `T(ε)` at which the plateau gap is below
@@ -241,7 +241,7 @@ This is the cleanest path; it does NOT do the full Lyapunov + Grönwall
 contraction analysis (the original session-88 attempt also skipped this
 in favour of the qualitative + Metric.tendsto + Classical.choice route).
 -/
-theorem signed_recovery_pos_magnitude_plateau_corrected
+theorem signed_recovery_pos_magnitude_plateau
     (L : ℕ) (hL : 2 ≤ L)
     (lambda mu : ℝ) (hlambda_pos : 0 < lambda) (hmu_pos : 0 < mu)
     (sigma : ℝ → ℝ → ℝ)
@@ -265,7 +265,7 @@ theorem signed_recovery_pos_magnitude_plateau_corrected
       Filter.Tendsto (sigma ε) Filter.atTop
         (nhds (Real.rpow (lambda / mu) ((1 : ℝ) / L))) := by
     intro ε hε hε1
-    exact sigma_positive_branch_converges_corrected L hL lambda mu hlambda_pos hmu_pos
+    exact sigma_positive_branch_converges L hL lambda mu hlambda_pos hmu_pos
       (sigma ε) (hSigma_pos ε hε hε1) (hSigma_below ε hε hε1)
       (hSigma_cont ε hε hε1) (hSigma_ode ε hε hε1)
   -- Step 2: For each ε, extract a witness time via Metric.tendsto_atTop

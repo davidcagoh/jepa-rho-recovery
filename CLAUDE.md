@@ -46,7 +46,7 @@ breaking paper 1 builds. Re-evaluate after Layer 2.1 lands.
 | `JepaRhoRecovery/DiagonalODE.lean` | Layer 2.1 — generalised diagonal ODE reduction |
 | `JepaRhoRecovery/Inversion.lean` | Layer 2.2 — identifiability inversion formula (v1, critical-time hybrid) |
 | `JepaRhoRecovery/PlateauEstimator.lean` | Layer 2.2′ — plateau + early-slope abstract analytic lemmas (paper-2 headline pivot, session 86) |
-| `JepaRhoRecovery/CriticalTime.lean` | `hittingTime` + `bernoulli_laurent_bound` (2 transplanted named sorries) + `actual_critical_time_signed` — paper-1 lineage, no Lake dep |
+| `JepaRhoRecovery/CriticalTime.lean` | Stub (session 99, Phase 3′-B). Paper-1 lineage (`hittingTime`, `bernoulli_laurent_bound`, `actual_critical_time_signed`, `purified_*`) + 4 axioms deleted along with the inverted-form Path-C wrapper. File retained as empty namespace for documentation round-trip; not imported by the umbrella. |
 | `JepaRhoRecovery/SampleNoise.lean` | Layer 3.1 — perturbation under sample covariance |
 | `JepaRhoRecovery/FiniteSample.lean` | Layer 3.2 — end-to-end finite-sample rate |
 | `JepaRhoRecovery/SignedODE.lean` | Layer 4.1 — signed-$\rho$ ODE analysis |
