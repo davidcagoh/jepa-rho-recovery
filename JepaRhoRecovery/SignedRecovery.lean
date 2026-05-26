@@ -650,50 +650,6 @@ theorem early_slope_perturbation_pos
     NOTE: paper Thm 7.3 part 1 only. Part 2 (μ-rate suboptimality) is an
     information-theoretic lower bound, deferred (paper-3 territory). -/
 
-/-  ORIGINAL STATEMENT (commented out — FALSE as stated).
-
-    The leading coefficient `(-((L : ℝ) / (2 * (L : ℝ) - 1)))` has the
-    wrong sign.  For the negative branch (λ < 0), the transformed variable
-    v(t) := σ(t)^{-(2L-1)/L} is increasing, so the estimator
-
-        -(L/(2L-1)) · v(T)/T
-
-    converges to -|λ| = λ (NEGATIVE), not to -λ = |λ| (POSITIVE).
-    Subtracting (-λ) = |λ| therefore leaves a residual of magnitude 2|λ|,
-    which is bounded below by a positive constant for all T > 0.
-    Since K · ε^{1/L} · |log ε| → 0 as ε → 0⁺, no finite K satisfies the
-    bound for all ε ∈ (0,1).
-
-    **Fix:** remove the leading minus sign so the estimator reads
-
-        (L/(2L-1)) · σ(ε,T)^{-(2L-1)/L} / T
-
-    which converges to |λ| = -λ.  Additionally, replace the universal
-    `ε < 1` quantifier with an existential `ε < ε₀ < 1` (matching the
-    pattern of `lambda_hat_early_slope_rate` in PlateauEstimator.lean)
-    because the bound `K · ε^{1/L} · |log ε|` degenerates as ε → 1⁻
-    (where |log ε| → 0).
-
-theorem signed_recovery_neg_lambda_rate_ORIGINAL
-    (L : ℕ) (hL : 2 ≤ L)
-    (lambda mu : ℝ) (hlambda_neg : lambda < 0) (hmu_pos : 0 < mu)
-    (sigma : ℝ → ℝ → ℝ)
-    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
-    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
-    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
-      HasDerivAt (sigma ε)
-        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
-          - mu * (sigma ε t) ^ 3) t)
-    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε) :
-    ∃ T : ℝ → ℝ, ∃ K_neg : ℝ, 0 < K_neg ∧
-      (∀ ε : ℝ, 0 < ε → ε < 1 → 0 < T ε) ∧
-      (∀ ε : ℝ, 0 < ε → ε < 1 →
-        |(-((L : ℝ) / (2 * (L : ℝ) - 1)))
-            * Real.rpow (sigma ε (T ε)) (-(2 * (L : ℝ) - 1) / L) / T ε
-          - (-lambda)|
-          ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε|) := by
-  sorry
--/
 
 /-- **Negative-branch λ-rate (paper Thm 7.3 part 1, CORRECTED).**
 

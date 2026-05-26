@@ -134,57 +134,6 @@ theorem sigma_negative_branch_le_init
 
 /-! ## Theorem 4.1(a) — Positive branch is monotonically learned -/
 
-/-
-ORIGINAL STATEMENT (commented out — FALSE as stated).
-   The original docstring claimed the upper bound is `σ < √(ρ·μ)`, but
-   this is incorrect.  Counterexample: ρ = 0.01, μ = 100, λ = ρ·μ = 1, L = 2.
-   Then √(ρ·μ) = 1, but at σ = 0.9 < 1 the derivative is
-   1 · 0.9^2.5 − 100 · 0.9³ ≈ 0.77 − 72.9 < 0,
-   contradicting monotonicity.
-
-   The correct fixed point of the ODE
-     σ̇ = λ · σ^{3−1/L} − (λ/ρ) · σ³
-   is σ* = ρ^L  (solving ρ = σ^{1/L}), NOT √(ρ·μ).
-   Below ρ^L the first term dominates and σ̇ > 0.
-
-theorem sigma_positive_branch_monotone
-    (L : ℕ) (hL : 2 ≤ L)
-    (lambda rho mu : ℝ) (hlam_pos : 0 < lambda)
-    (hrho_pos : 0 < rho) (hmu_pos : 0 < mu)
-    (h_lambda_eq : lambda = rho * mu)
-    (t_max : ℝ) (ht_max : 0 < t_max)
-    (sigma : ℝ → ℝ)
-    (hSigma_pos : ∀ t ∈ Set.Icc 0 t_max, 0 < sigma t)
-    (hSigma_below : ∀ t ∈ Set.Icc 0 t_max,
-        sigma t < Real.sqrt (rho * mu))
-    (hSigma_cont : ContinuousOn sigma (Set.Icc 0 t_max))
-    (hSigma_ode : ∀ t ∈ Set.Ioo 0 t_max,
-      HasDerivAt sigma
-        (lambda * Real.rpow (sigma t) (3 - 1 / (L : ℝ))
-          - (lambda / rho) * (sigma t) ^ 3) t) :
-    MonotoneOn sigma (Set.Icc 0 t_max) := by
-  sorry
-
-**Theorem 4.1(a) (Positive-branch monotonicity — corrected).**
-
-    The original statement used `σ < √(ρ·μ)` as the upper bound, but
-    the actual fixed point of the ODE `σ̇ = λ·σ^{3-1/L} − (λ/ρ)·σ³`
-    is `σ* = ρ^L` (from `ρ = σ^{1/L}`), not `√(ρ·μ)`.  Below `ρ^L`,
-    the `λ·σ^{3-1/L}` term dominates `(λ/ρ)·σ³`, giving `σ̇ ≥ 0`.
-
-    Modifications from original:
-    • Removed `mu`, `h_lambda_eq`  (not needed for this ODE analysis).
-    • Replaced `sigma t < Real.sqrt (rho * mu)` with `sigma t < rho ^ L`.
-
-    Proof sketch (mirror of `sigma_negative_branch_antitone`):
-    1. For `σ > 0` with `σ < ρ^L`, we have `σ^{1/L} < ρ` (rpow_lt_rpow).
-    2. Rearranging: `ρ · σ^{3-1/L} > σ³`, hence
-       `λ · σ^{3-1/L} > (λ/ρ) · σ³` (multiply by `λ/ρ > 0`).
-    3. So `σ̇ > 0` on `(0, t_max)`, and `monotoneOn_of_deriv_nonneg` closes.
-
-Below the fixed point `ρ^L`, the rpow term dominates the cubic:
-`ρ · s^{3-1/L} > s³` whenever `0 < s < ρ^L` and `ρ > 0`.
--/
 private lemma rpow_dominates_cube
     (L : ℕ) (hL : 2 ≤ L) (rho s : ℝ)
     (hrho_pos : 0 < rho) (hs_pos : 0 < s) (hs_lt : s < rho ^ L) :

@@ -242,32 +242,6 @@ theorem rho_hat_plateau_rate
     Additionally, add `hc_small : c * ((2L-1)/L) < 1` to ensure σ_id > 0
     (i.e., the observation time is before blow-up). -/
 
-/- Original (false) theorem — kept for reference:
-
-theorem lambda_hat_early_slope_rate_ORIGINAL
-    (L : ℕ) (hL : 2 ≤ L)
-    (lambda : ℝ) (hlambda_pos : 0 < lambda)
-    (c : ℝ) (hc_pos : 0 < c) (hc_lt_one : c < 1)
-    (sigma_at_t0 : ℝ → ℝ)
-    (K_early : ℝ) (hK_early_pos : 0 < K_early)
-    (h_early_slope_bound : ∀ ε : ℝ, 0 < ε → ε < 1 →
-        0 < sigma_at_t0 ε ∧
-        |sigma_at_t0 ε
-          - Real.rpow (ε ^ (-(2 * (L : ℝ) - 1) / L)
-                      - ((2 * (L : ℝ) - 1) / L) * lambda
-                          * (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L)))
-                      (-L / (2 * (L : ℝ) - 1))|
-          ≤ K_early * ε ^ ((1 : ℝ) / L) * |Real.log ε|) :
-    ∃ ε_0 C : ℝ, 0 < ε_0 ∧ ε_0 < 1 ∧ 0 < C ∧
-        ∀ ε : ℝ, 0 < ε → ε < ε_0 →
-          |((L : ℝ) / (2 * (L : ℝ) - 1))
-              * (ε ^ (-(2 * (L : ℝ) - 1) / L)
-                  - Real.rpow (sigma_at_t0 ε) (-(2 * (L : ℝ) - 1) / L))
-              / (c * lambda⁻¹ * ε ^ (-(2 * (L : ℝ) - 1) / L))
-           - lambda|
-            ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
-  sorry
--/
 
 /-! ### Helper lemmas for the corrected Theorem 5.2 -/
 
