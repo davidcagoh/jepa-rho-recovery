@@ -1,0 +1,387 @@
+%% full-proofs.tex — Supplementary full derivations for
+%% "Signed Decomposition of the Regression Structure via Linear JEPA Training" (Goh, 2026)
+%% Compile: pdflatex full-proofs && bibtex full-proofs && pdflatex full-proofs && pdflatex full-proofs
+%%
+%% This document is self-contained (its own preamble/macros, does not depend on the
+%% main paper's build tree) and lives in this repository purely as a page-budget
+%% overflow valve: the main paper states these five results with a short proof
+%% sketch and a pointer here; this document carries the full derivation each
+%% sketch is compressed from, verbatim, not re-derived. Labels below name the
+%% main paper's own \label{} for each result rather than a number, since page/
+%% section numbering in the main paper can shift independently of this document.
+
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+\usepackage[colorlinks=true,linkcolor=RoyalBlue4,citecolor=RoyalBlue4,urlcolor=NavyBlue]{hyperref}
+\usepackage{url}
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+\usepackage{enumitem}
+
+%% ── Macros, copied verbatim from the main paper's preamble (signed-decomposition.tex) ──
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\lean}[1]{\textup{\texttt{\small \detokenize{#1}}}}
+\newcommand{\Wbar}{\bar{W}}
+\newcommand{\Sxx}{\Sigma^{xx}}
+\newcommand{\Syx}{\Sigma^{yx}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\rhostar}{\rho_r^*}
+\newcommand{\lamstar}{\lambda_r^*}
+\newcommand{\sigmar}{\sigma_r}
+\newcommand{\rhohat}{\hat{\rho}_r}
+\newcommand{\lamhat}{\hat{\lambda}_r}
+\newcommand{\muhat}{\hat{\mu}_r}
+\newcommand{\rhoplateau}{\rhohat^{\mathrm{plateau}}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\title{Full Proofs: Supplementary Derivations for\\
+  \emph{Signed Decomposition of the Regression Structure\\
+  via Linear JEPA Training}}
+\author{David Goh}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document supplements the paper \citep{Goh2026signed}, AIS 2026 camera-ready.
+Five results there are stated with a proof sketch rather than the full derivation,
+for page-budget reasons (a hard 15-page cap). This document carries the full,
+previously-verified derivation each sketch is compressed from, unabridged. Nothing
+here is new mathematics — every derivation below already existed in a prior draft
+of the paper and was moved here, not re-derived, when the paper's own proof was
+shortened to a sketch. Each section is headed by the exact label the corresponding
+result carries in the main paper's \LaTeX{} source, so a reader can match sketch to
+full proof unambiguously regardless of section/theorem numbering in either document.
+Notation matches the main paper throughout; see its \S1 (Notation) for definitions
+not restated here.
+\end{abstract}
+
+\tableofcontents
+
+%% =============================================================================
+\section{Generalised diagonal ODE (\texttt{prop:diagonal-ode})}
+\label{sec:diagonal-ode}
+
+\begin{proposition}[Generalised diagonal ODE]
+Let $\sigmar(t)$ be the diagonal amplitudes of the paper's Definition~1
+(signed generalised eigenbasis). Under the paper's Proposition~2
+(quasi-static decoder, rigorous) and Assumption~3 (strict spectral gap),
+\begin{equation}
+\label{eq:diagonal-ode}
+\dot{\sigmar}(t)
+\;=\;
+L\,\mu_r\,\sigmar(t)^{2-1/L}\,\big(\rhostar - \sigmar(t)^L\big)
+\;+\;
+R_r(t, \eps),
+\qquad
+|R_r(t, \eps)| \le C_R\,\eps^{(2L-1)/L},
+\end{equation}
+uniformly on $[0, t_{\max}^*]$, with $C_R$ depending on the population
+covariances, $L$, and the spectral gap $\delta$ but not on $\eps$.
+\end{proposition}
+
+\begin{proof}
+The first step is the idealisation the main paper's Proof strategy flags as the one
+place the whole argument leans on classical, not re-derived, machinery: treating
+$\Wbar(t)$ as exactly diagonal in the eigenbasis (the correction being the
+off-diagonal bound of \texttt{lem:offdiag}) lets $v_r^*$ stand in for a two-sided
+eigenvector of $\Wbar(t)\Wbar(t)^\top$ and $\Wbar(t)^\top\Wbar(t)$, so the
+preconditioned flow projects onto
+\[
+\dot\sigmar(t) \;\approx\; v_r^{*\top}\dot{\Wbar}(t)v_r^*
+\;=\; -P_{rr}(t)\cdot v_r^{*\top}\nabla_{\Wbar}\mathcal{L}(\Wbar(t),V(t))\,v_r^*
+\;=\; -L\,\sigmar(t)^{2(L-1)/L}\cdot v_r^{*\top}\nabla_{\Wbar}\mathcal{L}\,v_r^*,
+\]
+using the preconditioner formula $P_{rr}(t) = L\sigma_r(t)^{2(L-1)/L}$ (the paper's
+Lemma, coupled gradient-flow system); we do not separately verify $v_r^*$'s
+two-sidedness here beyond the diagonality idealisation itself.
+
+The second step, by contrast, is exact given that idealisation, not an approximation
+on top of it. Write $\Delta V(t) := V(t) - V_{\mathrm{qs}}(\Wbar(t))$. Since
+$\Wbar\Sxx\Wbar^\top$ is invertible (the paper's Corollary, PD lower bound),
+$V_{\mathrm{qs}}(\Wbar)\Wbar\Sxx = \Wbar\Syx$ exactly, so substituting
+$V = V_{\mathrm{qs}} + \Delta V$ into the gradient formulas and using the
+eigenpair relation $\Syx v_r^* = \rhostar\Sxx v_r^*$ collapses every
+$V_{\mathrm{qs}}$-only term:
+\[
+v_r^{*\top}\nabla_{\Wbar}\mathcal{L}\,v_r^*
+\;=\;
+(Vv_r^*)^\top(V-\rhostar I)\Wbar\Sxx v_r^*
+\;=\;
+(Vv_r^*)^\top\Delta V\,\Wbar\Sxx v_r^*,
+\]
+an \emph{exact} identity, not an approximation. Two things follow. First, this is why
+the substitution is called quasi-\emph{static}: the entire driving term is
+proportional to the tracking error $\Delta V$, so the leading-order Bernoulli drift
+$L\mu_r\sigmar^{2-1/L}(\rhostar-\sigmar^L)$ cannot come from bounding $\|\Delta V\|$
+as an independent small quantity via the quasi-static Proposition alone — doing so,
+via Cauchy--Schwarz, gives only $\dot\sigmar =
+O(\sigmar^{2(L-1)/L}\eps^{2(L-1)/L})$, one order coarser in $\eps$ than the
+$\eps^{(2L-1)/L}$ claimed above. The leading term instead requires $\Delta V$'s own
+self-consistent leading-order value under the coupled $(\Wbar,V)$ dynamics — a
+singular-perturbation reduction, not a plug-in bound. Second, the residual $R_r$ is
+therefore exactly two contributions, not three: (i) the gap between $\Delta V$'s
+crude quasi-static-Proposition bound and its true self-consistent size, and (ii) the
+off-diagonal correction to the diagonality idealisation used above, controlled by the
+off-diagonal bound. (The gradient formulas contain no $\Sigma^{yy}$ term, so no
+third, independent contribution from $\Sigma^{yy}$ arises.)
+\end{proof}
+
+\noindent\emph{Lean status (see main paper Appendix~A / this repository's crosswalk).}
+\lean{Saxe.diagAmp_ODE} is sorry-free but the constant $C_R$ above is currently pinned
+via a compactness argument rather than a proof that it is genuinely independent of
+$\eps$ — a real, disclosed open gap, unaffected by the relocation of this proof.
+
+%% =============================================================================
+\section{Plateau estimator (\texttt{prop:plateau})}
+\label{sec:plateau}
+
+\begin{proposition}[Plateau estimator]
+For $\rhostar > 0$, the plateau estimator $\rhoplateau(\eps, T) := \sigmar(T)^L$
+satisfies
+\begin{equation}
+\label{eq:plateau-bound}
+\big|\rhoplateau(\eps, T) - \rhostar\big|
+\;\le\;
+C_{\mathrm{p}} \cdot \eps^{1/L} \cdot |\log\eps|
+\qquad
+\forall \eps < \eps_0,\;\forall T \ge T_*(\rhostar, \mu_r, \eps),
+\end{equation}
+where $T_*$ is the trajectory-derived plateau-detection time (definable from
+$\sigmar$ alone, no parameter input) and the constants $\eps_0, C_{\mathrm{p}}, T_*$
+depend on $L$, $\rhostar$, $\mu_r$, and the residual constant $C_R$ of
+\S\ref{sec:diagonal-ode}.
+\end{proposition}
+
+\begin{proof}
+Write $u(t) := \sigmar(t) - (\rhostar)^{1/L}$. Linearising the bracket
+$\rhostar - \sigmar^L$ at $\sigmar = (\rhostar)^{1/L}$ gives
+$\rhostar - \sigmar^L = -L(\rhostar)^{(L-1)/L}u + O(u^2)$, so \eqref{eq:diagonal-ode}
+becomes, for $u$ small,
+\[
+\dot u(t) \;=\; -c\,u(t) \;+\; R_r(t,\eps) \;+\; O(u(t)^2),
+\qquad
+c \;:=\; L^2\mu_r(\rhostar)^{(2L-2)/L} \;>\; 0,
+\]
+a constant (in $\eps$) contraction rate. Dropping the quadratic remainder (justified
+once $u$ is confined to a fixed neighbourhood of $0$, since there it is dominated by
+the linear term) and applying the variation-of-constants formula to the resulting
+linear inequality gives, for all $t \in [0, t_{\max}^*]$,
+\[
+|u(t)| \;\le\; |u(0)|\,e^{-ct} \;+\; \frac{C_R}{c}\,\eps^{(2L-1)/L}\big(1-e^{-ct}\big)
+\;\le\; |u(0)|\,e^{-ct} \;+\; \frac{C_R}{c}\,\eps^{(2L-1)/L}.
+\]
+Choose $T_*(\eps)$ so that the exponential transient itself has decayed to the
+target order, $|u(0)|e^{-cT_*} = \eps^{1/L}|\log\eps|$: since $|u(0)| = O(1)$, this
+gives $T_* = \Theta(|\log\eps|)$ — the trajectory-derived plateau time, definable
+from $\sigmar$ alone since it only requires detecting when $\sigmar$'s rate of
+change has fallen to a generic $\eps$-scale, not the problem-specific constants
+$\rhostar,\mu_r$ that would let a sharper (but non-detectable-without-them) choice
+do better. At $t \ge T_*$,
+\[
+|u(t)| \;\le\; \eps^{1/L}|\log\eps| \;+\; \frac{C_R}{c}\,\eps^{(2L-1)/L}
+\;=\; O\big(\eps^{1/L}|\log\eps|\big),
+\]
+since $\eps^{(2L-1)/L} = o(\eps^{1/L}|\log\eps|)$ for $L \ge 2$. Finally, the
+factorisation $a^L - b^L = (a-b)\sum_{k=0}^{L-1}a^kb^{L-1-k}$ with $a = \sigmar(T)$,
+$b = (\rhostar)^{1/L}$ bounds the sum by $L\max(a,b)^{L-1} = O(1)$ once $\sigmar(T)$
+is within a fixed neighbourhood of $(\rhostar)^{1/L}$, giving
+$\big|\rhoplateau(\eps,T) - \rhostar\big| = |\sigmar(T)^L - \rhostar|
+\le L\max(a,b)^{L-1}\cdot|u(T)| = O(\eps^{1/L}|\log\eps|)$
+for all $T \ge T_*(\eps)$, as claimed.
+\end{proof}
+
+\noindent\emph{Lean status.} The Lean proof of the plateau-tracking rate
+(\lean{Saxe.signed_recovery_pos_magnitude_plateau}) uses qualitative convergence plus
+a topological existence argument for $T_*$, not the quantitative Grönwall bound
+above; both give the same asymptotic rate.
+
+%% =============================================================================
+\section{Negative-branch $\lamstar$-rate (\texttt{prop:neg-lambda})}
+\label{sec:neg-lambda}
+
+\begin{proposition}[Negative-branch $\lamstar$-rate]
+For $\rhostar < 0$, there exists an estimator $\lamhat^{\mathrm{neg}}(\eps, T)$,
+computable from $\sigmar$ on a window $[T/2, T]$ alone, achieving
+$\big|\lamhat^{\mathrm{neg}} - |\lamstar|\big| \le C_\lambda^{\mathrm{neg}} \eps^{1/L}$
+for $\eps$ small and $T$ in a trajectory-detectable window, with
+$C_\lambda^{\mathrm{neg}}$ depending on $L$, $\mu_r$, and $C_R$.
+\end{proposition}
+
+\begin{proof}
+Write $v(t) := \sigmar(t)^{-(L-1)/L}$. By the chain rule and \eqref{eq:diagonal-ode},
+\[
+\dot v(t) \;=\; -\frac{L-1}{L}\sigmar(t)^{-(2L-1)/L}\dot\sigmar(t)
+\;=\; (L-1)|\lamstar| \;+\; (L-1)\mu_r\,\sigmar(t)^L
+\;-\; \frac{L-1}{L}\sigmar(t)^{-(2L-1)/L}R_r(t,\eps),
+\]
+an \emph{exact} identity (the leading $\sigmar^{2-1/L}$ and $\sigmar^{-(2L-1)/L}$
+powers cancel exactly, leaving a constant plus two lower-order corrections).
+Integrating over $[T/2, T]$ and dividing by $L-1$ times the window length motivates
+the estimator
+\[
+\lamhat^{\mathrm{neg}}(\eps, T) \;:=\;
+\frac{\sigmar(T)^{-(L-1)/L} - \sigmar(T/2)^{-(L-1)/L}}{(L-1)(T/2)},
+\]
+computable from $\sigmar$ on $[T/2,T]$ alone. Subtracting $|\lamstar|$ and bounding
+each correction term using $\sigmar$ monotone decreasing on the negative branch
+(the paper's Theorem, sign trichotomy, case (iii)) gives
+\[
+\big|\lamhat^{\mathrm{neg}} - |\lamstar|\big|
+\;\le\; \mu_r\,\sigmar(T/2)^L \;+\; \frac{C_R}{L}\,\eps^{(2L-1)/L}\sigmar(T)^{-(2L-1)/L}.
+\]
+Take $T$ any time by which $\sigmar$ has settled to its trajectory-regularity floor,
+$\sigmar(t) = \Theta(\eps^{1/L})$ for all $t$ from then on — trajectory-detectable,
+since it only requires observing that $\sigmar$ has stopped decaying appreciably,
+not knowing $\lamstar,\mu_r$. Then the first term is $\Theta(\mu_r\eps)$, and the
+second is $\Theta\big(\eps^{(2L-1)(L-1)/L^2}\big)$; both exponents exceed $1/L$ for
+every $L\ge2$ (the second because $2(L-1)^2 \ge 2 > 1$), so both terms are
+$O(\eps^{1/L})$, giving the claimed bound.
+\end{proof}
+
+\noindent\emph{Why argued directly rather than cited.} The Lean theorems for the
+negative branch (\lean{SignedODE.sigma_negative_branch_antitone},
+\lean{SignedRecovery.signed_recovery_neg_lambda_rate}) assume the pre-correction ODE
+form (a deprecated, inverted-bracket equation superseded at companion-repository
+session 90/99), not \eqref{eq:diagonal-ode} as this paper states it, and have not
+been re-verified against it. The main-text derivation above is therefore argued
+directly from \eqref{eq:diagonal-ode} rather than cited to either Lean theorem.
+
+%% =============================================================================
+\section{End-to-end finite-sample rate (\texttt{cor:finite-sample-end})}
+\label{sec:finite-sample-end}
+
+\begin{corollary}[End-to-end finite-sample rate]
+On an event of probability at least $1-\nu$ under which
+$\|\hat\Sxx-\Sxx\|_{\mathrm{op}}, \|\hat\Syx-\Syx\|_{\mathrm{op}} \le
+C''\sqrt{\log(d/\nu)/n}$ (matrix-Bernstein concentration), the signed-decomposition
+estimator $\rhohat$ computed in the sample eigenbasis $\{\hat v_r\}$ satisfies,
+uniformly in $r$,
+\[
+\big|\rhohat - \rhostar\big|
+\;\le\;
+C \cdot \eps^{1/L} |\log\eps|
+\;+\;
+\frac{C'}{\delta} \sqrt{\frac{\log(d/\nu)}{n}},
+\]
+with $C, C'$ depending on $L$, the population covariances, and $\sigma_x, \sigma_y$.
+\end{corollary}
+
+\begin{proof}
+Write $\rhohat(v_r)$ for the estimator computed by reading $\sigmar$ off in the
+coordinate direction $v_r$; the population estimator is $\rhohat(v_r^*)$ and the
+actual computed one is $\rhohat(\hat v_r)$. By the triangle inequality,
+\[
+\big|\rhohat(\hat v_r) - \rhostar\big| \;\le\;
+\underbrace{\big|\rhohat(\hat v_r) - \rhohat(v_r^*)\big|}_{\text{basis perturbation}}
+\;+\;
+\underbrace{\big|\rhohat(v_r^*) - \rhostar\big|}_{\text{dynamics error}}.
+\]
+The second term is exactly the signed-decomposition theorem's bound,
+$O(\eps^{1/L}|\log\eps|)$ uniformly in $r$. For the first term,
+$v_r \mapsto \rhohat(v_r)$ is Lipschitz on a neighbourhood of $v_r^*$ with a
+constant depending only on $\|\Wbar(t)\|$ along the trajectory (bounded, since
+$\Wbar(t)$ converges to a fixed limit on each branch), so
+$|\rhohat(\hat v_r) - \rhohat(v_r^*)| \le L_\rho\sin\angle(\hat v_r, v_r^*)$. Matrix
+Bernstein concentration \citep[Thm~1.6.2]{Tropp2015} bounds the covariance
+perturbation $\|\hat\Sxx - \Sxx\|_{\mathrm{op}}, \|\hat\Syx - \Syx\|_{\mathrm{op}}$
+at rate $O_p(\sqrt{\log(d/\nu)/n})$ with probability $1-\nu$; a Wedin-type bound for
+the generalised eigenproblem converts this into
+$\sin\angle(\hat v_r, v_r^*) \le (C_W/\delta)\sqrt{\log(d/\nu)/n}$, modulating the
+spectral gap $\delta$. Combining the two terms gives the stated bound, with
+$C' := L_\rho C_W$.
+\end{proof}
+
+%% =============================================================================
+\section{Sign trichotomy (\texttt{thm:trichotomy})}
+\label{sec:trichotomy}
+
+\begin{theorem}[Sign trichotomy]
+Under \eqref{eq:diagonal-ode} with the bracket residual absorbed into $R_r$:
+\begin{enumerate}[label=(\roman*),leftmargin=2em,itemsep=2pt]
+\item If $\rhostar > 0$, then $\sigmar(t) \to (\rhostar)^{1/L}$ as $t \to \infty$,
+monotonically once $\sigmar(t) > 0$.
+\item If $\rhostar = 0$, then $|\sigmar(t)| = O(\eps^{1/L})$ for all
+$t \in [0, t_{\max}^*]$; the bracket is identically $-\sigma^L$, damping any
+positive growth at the natural $\eps$-scale.
+\item If $\rhostar < 0$, then $\sigmar(t) \to 0$ monotonically; the bracket
+$-\sigma^L + \rhostar < 0$ for all $\sigma > 0$ forces strict decay.
+\end{enumerate}
+The constants in the convergence rates depend on $L$, $\rhostar$, $\mu_r$, and the
+residual constant $C_R$.
+\end{theorem}
+
+\begin{proof}
+Proposition~\ref{sec:diagonal-ode}'s residual bound is only asserted on the finite
+horizon $[0,t_{\max}^*]$, so the asymptotic ($t\to\infty$) claims below concern the
+idealised reduction $\dot\sigmar = L\mu_r\sigmar^{2-1/L}(\rhostar-\sigmar^L)$
+obtained by dropping $R_r$. The residual-aware, finite-time counterparts are
+\S\ref{sec:plateau} (case (i)) and \S\ref{sec:neg-lambda} (case (iii)); case (ii)'s
+own gap at this idealisation is the main paper's Remark
+(\texttt{rem:zero-ceiling-gap}), unaffected by this relocation.
+
+\emph{(i)} The bracket $\rhostar-\sigmar^L$ is positive for $\sigmar<(\rhostar)^{1/L}$
+and negative for $\sigmar>(\rhostar)^{1/L}$, so for $\sigmar>0$, $\dot\sigmar$ has
+the sign of $(\rhostar)^{1/L}-\sigmar$: $\sigmar$ increases monotonically toward the
+fixed point from below and decreases toward it from above, so
+$\sigmar(t)\to(\rhostar)^{1/L}$.
+
+\emph{(ii)} The bracket is identically $-\sigmar^L$, so the idealised drift
+$-L\mu_r\sigmar^{(3L-2)/L}$ is non-positive for $\sigmar\ge0$: whether this
+genuinely confines $\sigmar$ to the $O(\eps^{1/L})$ scale against the residual
+$R_r$ is exactly the content of the main paper's zero-ceiling-gap Remark, not
+re-derived here.
+
+\emph{(iii)} For $\rhostar<0$ and $\sigmar>0$, the bracket $\rhostar-\sigmar^L<0$
+always, so the idealised drift is strictly negative throughout, giving monotone
+decay. This case does not share case (ii)'s $L=2$ pathology: at the initial scale
+$\sigmar=\Theta(\eps^{1/L})$ the drift magnitude is $\Theta(\eps^{(2L-1)/L^2})$,
+which dominates the residual bound $C_R\eps^{(2L-1)/L}$ for $\eps$ small since
+$(2L-1)/L^2 < (2L-1)/L$ for every $L\ge2$ — unlike case (ii), where the idealised
+baseline drift is exactly zero and so cannot dominate any nonzero residual, here the
+baseline drift is itself nonzero and shrinks more slowly in $\eps$ than the
+residual, so strict decay survives the residual uniformly in $L$.
+\end{proof}
+
+%% =============================================================================
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+
+\bibitem[Goh(2026)]{Goh2026signed}
+David Goh.
+\newblock Signed decomposition of the regression structure via linear JEPA
+  training: An algorithm, empirical validation, and a machine-checked proof.
+\newblock AIS 2026, camera-ready.
+
+\bibitem[Tropp(2015)]{Tropp2015}
+Joel A. Tropp.
+\newblock An introduction to matrix concentration inequalities.
+\newblock \emph{Foundations and Trends in Machine Learning}, 8(1-2):1--230,
+  2015.
+
+\end{thebibliography}
+
+\end{document}

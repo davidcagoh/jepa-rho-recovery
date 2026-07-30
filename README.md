@@ -47,3 +47,10 @@ lake build
 Repo created 2026-05-17 (session 67) after option-2 (full Layers 1–5
 moonshot) was selected over option-1 (Layers 1–2 only TMLR follow-up).
 See `../wiki/decisions.md` and OQ-17 in `../wiki/INDEX.md`.
+
+## Full proofs (2026-07-29)
+
+`full-proofs/` contains full derivations for five results the camera-ready paper
+states with a proof sketch, for page-budget reasons — see `full-proofs/README.md`.
+`ais-submission/` and `my_theorems/` predate the camera-ready rewrite and are stale;
+`full-proofs/` is the one paper-adjacent directory in this repo kept current.
