@@ -1,0 +1,91 @@
+\section{Identifying the Sign of the Regression Coefficients}
+\label{sec:trichotomy}
+
+The ODE~\eqref{eq:diagonal-ode} extends naturally to signed
+$\rhostar \in \RR$. The qualitative behaviour of $\sigmar$ splits
+into three regimes.
+
+\begin{theorem}[Sign trichotomy]
+\label{thm:trichotomy}
+Under Proposition~\ref{prop:diagonal-ode} with the bracket residual
+absorbed into $R_r$:
+\begin{enumerate}[label=(\roman*),leftmargin=2em,itemsep=2pt]
+\item If $\rhostar > 0$, then $\sigmar(t) \to (\rhostar)^{1/L}$ as
+$t \to \infty$, monotonically once $\sigmar(t) > 0$.
+\item If $\rhostar = 0$, then
+$|\sigmar(t)| = O(\eps^{1/L})$ for all $t \in [0, t_{\max}^*]$;
+the bracket is identically $-\sigma^L$, damping any positive growth at
+the natural $\eps$-scale.
+\item If $\rhostar < 0$, then $\sigmar(t) \to 0$ monotonically;
+the bracket $-\sigma^L + \rhostar < 0$ for all $\sigma > 0$ forces
+strict decay.
+\end{enumerate}
+The constants in the convergence rates depend on $L$, $\rhostar$, $\mu_r$,
+and the residual constant $C_R$.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The residual bound holds only on $[0,t_{\max}^*]$, so the asymptotic claims below concern
+the idealised reduction $\dot\sigmar = L\mu_r\sigmar^{2-1/L}(\rhostar-\sigmar^L)$; the
+residual-aware, finite-time counterparts are Proposition~\ref{prop:plateau} (case (i)) and
+Proposition~\ref{prop:neg-lambda} (case (iii)), and case (ii)'s own gap at this
+idealisation is Remark~\ref{rem:zero-ceiling-gap} below.
+\emph{(i)} The bracket's sign flips at $\sigmar=(\rhostar)^{1/L}$, giving monotone
+convergence to that fixed point from either side.
+\emph{(ii)} The bracket is identically $-\sigmar^L$, non-positive throughout — whether
+this confines $\sigmar$ against the residual $R_r$ is exactly Remark~\ref{rem:zero-ceiling-gap}'s
+content.
+\emph{(iii)} The bracket $\rhostar-\sigmar^L$ is strictly negative for all $\sigma>0$ when
+$\rhostar<0$, and the (nonzero) drift magnitude at the initial scale shrinks more slowly
+in $\eps$ than the residual bound, uniformly in $L\ge2$, so strict decay survives it;
+full exponent comparison in the supplementary proofs document (\S5),
+\url{https://github.com/davidcagoh/jepa-rho-recovery/blob/master/full-proofs/full-proofs.pdf}.
+\end{proof}
+Verification status for each case, and why case (iii) is argued directly rather than
+cited, are in Appendix~\ref{app:lean}.
+
+\begin{remark}[Zero-branch ceiling: residual bound insufficient at $L=2$]
+\label{rem:zero-ceiling-gap}
+Case (ii)'s residual bound is self-consistent with the claimed $O(\eps^{1/L})$ ceiling
+for integer $L\ge3$, but \emph{not} at $L=2$ --- the depth used throughout
+\S\ref{sec:experiments}: a sorry-free Lean proof
+(\lean{ZeroBranchResidual.zero_branch_L2_ceiling_violation}, companion repository)
+constructs an admissible worst-case residual, consistent with
+Proposition~\ref{prop:diagonal-ode}'s own bound, that forces $\sigmar$ above the ceiling
+within the trajectory horizon. This does \emph{not} show the actual trajectory violates
+the ceiling --- the real residual has structure a worst-case bound doesn't capture ---
+only that the bound alone cannot prove case (ii) at $L=2$. Full derivation in
+Appendix~\ref{app:lean}.
+\end{remark}
+
+
+\subsection{Sign identification}
+\label{ssec:sign-id}
+
+The trichotomy above already pins down $\sign(\rhostar)$ from $\sigmar$'s asymptotics alone.
+
+\begin{corollary}[Sign identification, pure trajectory]
+\label{cor:sign-id}
+Under the trichotomy of Theorem~\ref{thm:trichotomy}, the sign of
+$\rhostar$ is determined by the asymptotic behaviour of $\sigmar$:
+\[
+\sign(\rhostar) \;=\;
+\begin{cases}
++1 & \text{if } \sigmar(t) \text{ has a positive limit,} \\
+0 & \text{if } \sigmar(t) \text{ is constant up to } O(\eps^{1/L}), \\
+-1 & \text{if } \sigmar(t) \to 0.
+\end{cases}
+\]
+Each case is detectable from $\sigmar$ alone with no parameter input.
+\end{corollary}
+
+\begin{proof}
+Theorem~\ref{thm:trichotomy}'s three cases are mutually exclusive and exhaustive in
+$\rhostar$'s sign. Each produces a distinct asymptotic signature of $\sigmar$ (a
+positive limit, boundedness at the initial $\eps$-scale, or convergence to zero), so
+reading the sign off that signature is immediate case-by-case: $\rhostar>0 \iff$ case (i)
+$\iff \sigmar$ has a positive limit; $\rhostar=0 \iff$ case (ii) $\iff \sigmar$ stays
+$O(\eps^{1/L})$; $\rhostar<0 \iff$ case (iii) $\iff \sigmar\to0$.
+\end{proof}
+Lean targets in Appendix~\ref{app:lean}.
+

@@ -1,0 +1,103 @@
+\section{Deferred proofs}
+\label{app:finite-sample-derivation}
+
+Proofs deferred from the main text: the off-diagonal bound and positive-definite lower
+bound used in \S\ref{sec:ode-prelim}, the coupled gradient-flow system and quasi-static
+decoder bound used in \S\ref{sec:quasistatic} (all technical, but with a role already
+clear from the main-text statements), and the finite-sample perturbation bounds
+summarised in \S\ref{sec:finite-sample}.
+
+\subsection{Off-diagonal bound (Lemma~\ref{lem:offdiag})}
+\label{ssec:offdiag-proof}
+
+\begin{proof}
+This is the fundamental-theorem-of-calculus argument of
+\citet[\S6, Prop.~(Bootstrap consistency), item~1]{Goh2026ordering}
+(\lean{offDiag_ftc}, \texttt{BootstrapLemmas.lean}, companion repository,
+public): $c_{rs}$ is linear in $\Wbar$, so
+Assumption~\ref{ass:traj-reg}(i)'s bound $\|\dot{\Wbar}(t)\|_F \le K_1\eps^2$
+integrates directly to $|c_{rs}(t)| \le C'\eps^{1/L}$ on $[0,t_{\max}^*]$,
+using $c_{rs}(0)=0$ under~\eqref{eq:init}. The argument is sign-agnostic
+in $\rhostar$, so it transfers unchanged from the companion's all-positive
+setting.
+\end{proof}
+
+\subsection{Positive-definite lower bound (Corollary~\ref{cor:pd-lower})}
+\label{ssec:pd-lower-proof}
+
+\begin{proof}
+This is the Gershgorin argument of \citet[\S6, Prop.~(Bootstrap
+consistency), item~2]{Goh2026ordering} (\lean{pd_lower_from_offDiag},
+companion repository, public): diagonal dominance $C'(d-1)<c_w$ forces
+$\Wbar(t)$ invertible via Gershgorin's theorem, giving
+$\sigma_{\min}(\Wbar(t)) \ge (c_w-C'(d-1))\eps^{1/L}/\sqrt d$ and hence
+$\Wbar\Sxx\Wbar^\top \succeq c_0\eps^{2/L}I$ using $\Sxx\succ0$.
+Sign-agnostic, as above.
+\end{proof}
+
+\subsection{Coupled gradient-flow system (Lemma~\ref{lem:grad-flow})}
+\label{ssec:grad-flow-proof}
+
+\begin{proof}
+\eqref{eq:grads}: direct differentiation of
+$\mathcal{L} = \tfrac12\EE\|y - V\Wbar x\|_2^2$ under the expectation,
+using $\Sxx = \EE[xx^\top]$, $\Syx = \EE[yx^\top]$.
+
+\eqref{eq:preconditioned-flow}: the identical balanced-flow reduction is
+derived in \citet[\S2.3]{Goh2026ordering} (companion repository, public)
+from the same balance condition (Assumption~\ref{ass:aligned-init}) and
+\citet{Arora2018}; not re-derived here.
+\end{proof}
+
+\subsection{Quasi-static decoder, rigorous (Proposition~\ref{prop:quasistatic})}
+\label{ssec:quasistatic-proof}
+
+\begin{proof}
+The identical Gr\"onwall tracking argument is proved in
+\citet[\S6, Prop.~(Bootstrap consistency), item~3]{Goh2026ordering}
+(\lean{tracking_bound_from_gronwall}, assembled from
+\lean{contraction_ode_structure} and \lean{contractive_gronwall_decay},
+companion repository, public), under the same hypotheses
+(Assumption~\ref{ass:traj-reg}(i), Corollary~\ref{cor:pd-lower}): writing
+$\Delta V := V - V_{\mathrm{qs}}(\Wbar)$, $\dot{\Delta V} =
+-\Delta V\,\Wbar\Sxx\Wbar^\top - \dot V_{\mathrm{qs}}(\Wbar)$ contracts at
+rate $c_0\eps^{2/L}$ against a drift bounded by $D_0\eps^2$, giving
+$\|\Delta V(t)\|_F \le C_{\mathrm{qs}}\eps^{2(L-1)/L}$. Independently
+verified in our own Lean development
+(\lean{QuasiStatic.quasiStatic_rigorous}, sorry-free). Sign-agnostic.
+\end{proof}
+
+\subsection{Matrix-Bernstein perturbation}
+\label{ssec:bernstein}
+
+Under sub-Gaussian assumptions on $(x,y)$ with constants $\sigma_x,\sigma_y$,
+\citet[Thm~1.6.2]{Tropp2015} gives
+\begin{equation}
+\label{eq:bernstein-cov}
+\PP\!\left[
+\big\|\hat{\Sxx} - \Sxx\big\|_{\mathrm{op}} > t
+\right]
+\le 2d \exp\!\left( -\frac{n t^2}{2\sigma_x^4 + 2\sigma_x^2 t / 3} \right),
+\end{equation}
+and analogously for $\hat{\Syx} - \Syx$; taking $t = c\sqrt{\sigma_x^4\log(d/\nu)/n}$
+gives $\|\hat{\Sxx} - \Sxx\|_{\mathrm{op}} \le c\sqrt{\sigma_x^4\log(d/\nu)/n}$ with
+probability at least $1-\nu$.
+
+\subsection{Davis--Kahan / Wedin for the generalised eigenproblem}
+\label{ssec:davis-kahan}
+
+A Wedin-type bound converts the covariance perturbation into an eigenvector
+perturbation:
+\begin{equation}
+\label{eq:wedin}
+\sin\angle\!\big(\hat v_r, v_r^*\big)
+\;\le\;
+\frac{\|\hat{\Syx} - \Syx\|_{\mathrm{op}} + |\rhostar|\,\|\hat{\Sxx} - \Sxx\|_{\mathrm{op}}}
+     {\delta_r - O(\|\hat{\Sxx} - \Sxx\|_{\mathrm{op}})}
+\;\le\;
+\frac{C_W}{\delta} \sqrt{\frac{\log(d/\nu)}{n}}
+\end{equation}
+on the event of~\eqref{eq:bernstein-cov}, with $C_W$ depending on
+$\sigma_x, \sigma_y$, $\|\Sxx\|, \|\Syx\|$ — standard but technical for the
+generalised (non-symmetric) eigenproblem, formalised as
+\lean{SampleNoise.sample_eigenvalue_perturbation} in the companion repo.

@@ -1,0 +1,244 @@
+\section{Estimating the Regression Spectrum}
+\label{sec:estimating-spectrum}
+
+\subsection{Positive-branch identifiability}
+\label{sec:positive-branch}
+
+This is the substantive content of the paper. The trajectory $\sigmar$
+on the positive branch determines $\rhostar$ directly, at no cost beyond
+the eigenbasis itself.
+
+The ODE~\eqref{eq:diagonal-ode} on the positive branch
+($\rhostar > 0$) has a unique positive fixed point
+$\sigma_r^\infty = (\rhostar)^{1/L}$, attracting on $(0, \infty)$. The
+\emph{plateau estimator}
+\begin{equation}
+\label{eq:plateau-estimator}
+\rhoplateau(\eps, T) \;:=\; \sigmar(T)^L
+\end{equation}
+reads $\rhostar$ off directly once the trajectory has plateaued.
+
+\begin{proposition}[Plateau estimator]
+\label{prop:plateau}
+For $\rhostar > 0$, the plateau estimator $\rhoplateau(\eps, T)$
+satisfies
+\begin{equation}
+\label{eq:plateau-bound}
+\big|\rhoplateau(\eps, T) - \rhostar\big|
+\;\le\;
+C_{\mathrm{p}} \cdot \eps^{1/L} \cdot |\log\eps|
+\qquad
+\forall \eps < \eps_0,\;\forall T \ge T_*(\rhostar, \mu_r, \eps),
+\end{equation}
+where $T_*$ is the trajectory-derived plateau-detection time (definable
+from $\sigmar$ alone, no parameter input) and the constants
+$\eps_0, C_{\mathrm{p}}, T_*$ depend on $L$, $\rhostar$, $\mu_r$, and
+the residual constant $C_R$ of Proposition~\ref{prop:diagonal-ode}.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Write $u(t) := \sigmar(t) - (\rhostar)^{1/L}$. Linearising the bracket at the fixed point
+turns \eqref{eq:diagonal-ode} into $\dot u = -cu + R_r(t,\eps) + O(u^2)$ with constant
+(in $\eps$) contraction rate $c := L^2\mu_r(\rhostar)^{(2L-2)/L}>0$. A standard
+variation-of-constants bound gives $|u(t)| \le |u(0)|e^{-ct} + (C_R/c)\eps^{(2L-1)/L}$;
+choosing the trajectory-derived time $T_*=\Theta(|\log\eps|)$ at which the exponential
+transient has decayed to the target order (detectable from $\sigmar$'s rate of change
+alone, no parameter input) gives $|u(t)|=O(\eps^{1/L}|\log\eps|)$ for $t\ge T_*$, since
+$\eps^{(2L-1)/L}=o(\eps^{1/L}|\log\eps|)$ for $L\ge2$. The factorisation
+$a^L-b^L=(a-b)\sum_{k}a^kb^{L-1-k}$ then transfers this bound through $\sigmar(T)^L$ to
+$\rhoplateau$. Full computation in the supplementary proofs document (\S2),
+\url{https://github.com/davidcagoh/jepa-rho-recovery/blob/master/full-proofs/full-proofs.pdf}.
+\end{proof}
+Verification status, and how the Lean proof's mechanism differs from the Grönwall
+argument in the full derivation, are in Appendix~\ref{app:lean}.
+
+\subsection{Signed recovery}
+\label{sec:signed-recovery}
+
+We combine the previous sections into the signed-decomposition headline
+of the abstract.
+
+\subsubsection{Negative-branch rate analysis}
+\label{ssec:negative-rate}
+
+On the negative branch ($\rhostar < 0$), the dominant decay is set by
+the bare term $L\,\lamstar\,\sigma^{2-1/L}$ ($\lamstar < 0$ here).
+Asymptotically,
+\[
+\sigmar(t) \;\sim\; \big[(L-1)\,|\lamstar|\,t\big]^{-L/(L-1)}
+\qquad
+\text{as } t \to \infty
+\]
+in the idealised reduction (dropping $R_r$, on the same footing as
+Theorem~\ref{thm:trichotomy}'s asymptotic claims). A monotone
+transform of the late-time trajectory therefore recovers $|\lamstar|$.
+
+\begin{proposition}[Negative-branch $\lamstar$-rate]
+\label{prop:neg-lambda}
+For $\rhostar < 0$, there exists an estimator
+$\lamhat^{\mathrm{neg}}(\eps, T)$, computable from $\sigmar$ on a
+window $[T/2, T]$ alone, achieving
+$\big|\lamhat^{\mathrm{neg}} - |\lamstar|\big| \le C_\lambda^{\mathrm{neg}} \eps^{1/L}$
+for $\eps$ small and $T$ in a trajectory-detectable window, with
+$C_\lambda^{\mathrm{neg}}$ depending on $L$, $\mu_r$, and $C_R$.
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Write $v(t) := \sigmar(t)^{-(L-1)/L}$. By the chain rule and \eqref{eq:diagonal-ode},
+$\dot v(t)$ is an \emph{exact} identity — the leading $\sigmar^{2-1/L}$ and
+$\sigmar^{-(2L-1)/L}$ powers cancel exactly, leaving $(L-1)|\lamstar|$ plus two
+lower-order corrections. Integrating over $[T/2,T]$ motivates the difference-quotient
+estimator $\lamhat^{\mathrm{neg}}(\eps,T) :=
+(\sigmar(T)^{-(L-1)/L}-\sigmar(T/2)^{-(L-1)/L})/((L-1)(T/2))$, computable from
+$\sigmar$ on $[T/2,T]$ alone. Bounding both correction terms using $\sigmar$ monotone
+decreasing on the negative branch (Theorem~\ref{thm:trichotomy}(iii)), evaluated once
+$\sigmar$ has settled to its Assumption~\ref{ass:traj-reg}(ii) floor
+(trajectory-detectable, no parameter input), gives exponents $\Theta(\mu_r\eps)$ and
+$\Theta(\eps^{(2L-1)(L-1)/L^2})$ — both exceeding $1/L$ for every $L\ge2$ — so both
+terms are $O(\eps^{1/L})$. Full computation in the supplementary proofs document (\S3),
+\url{https://github.com/davidcagoh/jepa-rho-recovery/blob/master/full-proofs/full-proofs.pdf}.
+\end{proof}
+Verification status, and why this proof is argued directly rather than cited, are in
+Appendix~\ref{app:lean}.
+
+By contrast, $\mu_r$ enters the negative-branch ODE only through the subleading
+$\mu_r\sigma^{2-1/L+L}$ term (bracket $\rhostar-\sigma^L\approx\rhostar$ as
+$\sigma\to0$), so recovering it from the trajectory needs controlling a quantity
+at order $|\rhostar|\,\eps^{1/L}$ — dominated by the $O_p(n^{-1/2})$
+sample-covariance floor for any fixed $n$ as $\eps\to0$. We do not formalise this
+lower bound; the recommended estimator is therefore direct sample covariance,
+$\muhat^{\mathrm{cov}}$, combined with Proposition~\ref{prop:neg-lambda}'s
+$\lamhat^{\mathrm{neg}}$ via $\rhohat = \lamstar/\mu_r$.
+
+\subsubsection{Signed decomposition theorem (headline)}
+\label{ssec:headline-formal}
+
+We now combine both branches into one signed estimator, this paper's headline result.
+
+\begin{theorem}[Signed decomposition]
+\label{thm:headline-formal}
+Under Assumption~\ref{ass:gap}, Proposition~\ref{prop:diagonal-ode},
+and the conclusions of \S\S\ref{sec:trichotomy}--\ref{sec:positive-branch}
+together with Corollary~\ref{cor:sign-id} and Proposition~\ref{prop:neg-lambda},
+the estimator
+\begin{equation}
+\label{eq:headline-estimator}
+\rhohat(\eps, T)
+\;:=\;
+\begin{cases}
++\,\sigmar(T)^{L} & \text{if } \sigmar(T) > \eta(\eps),
+  \text{ (positive branch)} \\
+0 & \text{if } \sigmar(T) \le \eta(\eps) \text{ and } \sigmar(T)
+  \text{ has plateaued}, \text{ (zero branch)} \\
+-\,\lamhat^{\mathrm{neg}}/\muhat^{\mathrm{cov}}
+  & \text{if } \sigmar(T) \le \eta(\eps) \text{ and } \sigmar(T)
+  \text{ is still decaying}, \text{ (negative branch)}
+\end{cases}
+\end{equation}
+where $\eta(\eps) := \eps^{1/L}|\log\eps|^2$ is the
+trajectory-detectable threshold and ``plateaued'' vs.\ ``still
+decaying'' refers to the qualitative trichotomy of
+Theorem~\ref{thm:trichotomy}(ii)--(iii) --- distinguished by comparing
+$\sigmar$ at two times (e.g.\ $T/2$ against $T$), not by the sign of
+$\sigmar(T)$ at a single time, since $\sigmar(t) \ge 0$ throughout on
+every branch (see the remark on
+\eqref{eq:plateau-estimator} in \S\ref{sec:positive-branch} and
+Remark~\ref{rem:open-classifier} below).
+Under this classification, the estimator recovers $\rhostar$ at the
+rates
+\[
+\big|\rhohat - \rhostar\big| \;\le\;
+\begin{cases}
+C_+ \eps^{1/L}|\log\eps| + O_p(n^{-1/2}/\delta) & \text{positive,} \\
+C_0 \eps^{1/L} & \text{zero,} \\
+C_- \eps^{1/L} + O_p(n^{-1/2}/\delta) & \text{negative}
+\end{cases}
+\]
+uniformly in $r$, with constants depending on the population covariances,
+$L$, and the spectral gap $\delta$.
+\end{theorem}
+
+\begin{proof}
+By Corollary~\ref{cor:sign-id}, $\sigmar$'s asymptotic signature determines
+$\sign(\rhostar)$ exactly, so \eqref{eq:headline-estimator}'s branch split
+selects the correct case for each $r$. On the positive branch,
+$\rhohat = \sigmar(T)^L$ and Proposition~\ref{prop:plateau} gives the
+stated $C_+\eps^{1/L}|\log\eps|$ rate. On the zero branch, $\rhostar=0$
+exactly and $\rhohat=0$, so the error is bounded by
+Theorem~\ref{thm:trichotomy}(ii)'s $O(\eps^{1/L})$ confinement translated
+through $\eta(\eps)$, giving $C_0\eps^{1/L}$. On the negative branch,
+$\rhohat = -\lamhat^{\mathrm{neg}}/\muhat^{\mathrm{cov}}$; writing
+$\rhostar = -\lamstar/\mu_r$ and applying the triangle inequality to the
+ratio (a first-order Delta-method expansion around $(\lamstar,\mu_r)$,
+valid since $\mu_r>0$ is bounded away from $0$) combines
+Proposition~\ref{prop:neg-lambda}'s $C_\lambda^{\mathrm{neg}}\eps^{1/L}$
+trajectory-side error with $\muhat^{\mathrm{cov}}$'s standard
+$O_p(n^{-1/2})$ sample-covariance concentration, giving
+$C_-\eps^{1/L} + O_p(n^{-1/2}/\delta)$. The $O_p(n^{-1/2}/\delta)$ terms
+shown for the positive and negative branches are the same
+basis-perturbation and covariance-concentration effects
+Corollary~\ref{cor:finite-sample-end} isolates below; displaying them
+here already anticipates that combination rather than restating a
+purely population-level bound. Combining the three cases gives the
+stated uniform bound.
+\end{proof}
+
+\begin{remark}[Open: finite-time noise-aware classifier]
+\label{rem:open-classifier}
+Theorem~\ref{thm:headline-formal} classifies branches using the \emph{qualitative}
+temporal trichotomy of Theorem~\ref{thm:trichotomy}, not yet a concrete, finite-time,
+noise-robust decision rule for telling ``plateaued'' apart from ``still decaying'' under
+residual and sample noise --- a strictly harder question than it may first appear,
+since Remark~\ref{rem:zero-ceiling-gap} shows even the qualitative ceiling this
+classifier would rely on is unresolved at $L=2$. Left to future work; full scope in
+Appendix~\ref{app:lean}.
+\end{remark}
+
+Verification status and scope are in Appendix~\ref{app:lean}. The zero- and
+negative-branch classification rule of \eqref{eq:headline-estimator} is stated
+qualitatively per Remark~\ref{rem:open-classifier} and is not itself part of the
+Lean-verified chain.
+
+\subsection{Finite-sample rate}
+\label{sec:finite-sample}
+
+The estimators above use the sample eigenbasis $\{\hat v_r\}$ of
+$(\hat{\Syx}, \hat{\Sxx})$ in place of the population eigenbasis
+$\{v_r^*\}$. This introduces basis-perturbation error alongside
+Theorem~\ref{thm:headline-formal}'s $\eps$-dependent dynamics error.
+
+\begin{corollary}[End-to-end finite-sample rate]
+\label{cor:finite-sample-end}
+On an event of probability at least $1-\nu$ under which
+$\|\hat\Sxx-\Sxx\|_{\mathrm{op}}, \|\hat\Syx-\Syx\|_{\mathrm{op}} \le
+C''\sqrt{\log(d/\nu)/n}$ (Appendix~\ref{app:finite-sample-derivation},
+eq.~\eqref{eq:bernstein-cov}), the signed-decomposition estimator
+$\rhohat$ of~\eqref{eq:headline-estimator} computed in the sample
+eigenbasis $\{\hat v_r\}$ satisfies, uniformly in $r$,
+\[
+\big|\rhohat - \rhostar\big|
+\;\le\;
+C \cdot \eps^{1/L} |\log\eps|
+\;+\;
+\frac{C'}{\delta} \sqrt{\frac{\log(d/\nu)}{n}},
+\]
+with $C, C'$ depending on $L$, the population covariances, and
+$\sigma_x, \sigma_y$.
+\end{corollary}
+
+\begin{proof}[Proof sketch]
+Writing $\rhohat(v_r)$ for the estimator~\eqref{eq:headline-estimator} read off in
+coordinate direction $v_r$, the triangle inequality splits
+$|\rhohat(\hat v_r)-\rhostar|$ into a basis-perturbation term
+$|\rhohat(\hat v_r)-\rhohat(v_r^*)|$ and a dynamics-error term
+$|\rhohat(v_r^*)-\rhostar|$. The second is exactly Theorem~\ref{thm:headline-formal}'s
+$O(\eps^{1/L}|\log\eps|)$ bound. The first uses that $v_r\mapsto\rhohat(v_r)$ is
+Lipschitz near $v_r^*$ (constant bounded by $\|\Wbar(t)\|$ along the trajectory), so
+$|\rhohat(\hat v_r)-\rhohat(v_r^*)| \le L_\rho\sin\angle(\hat v_r,v_r^*)$; matrix
+Bernstein concentration \citep[Thm~1.6.2]{Tropp2015} plus a Wedin-type bound for the
+generalised eigenproblem (Appendix~\ref{app:finite-sample-derivation}) bounds this
+angle by $(C_W/\delta)\sqrt{\log(d/\nu)/n}$. Combining the two terms gives the stated
+bound with $C' := L_\rho C_W$. Full computation in the supplementary proofs document
+(\S4), \url{https://github.com/davidcagoh/jepa-rho-recovery/blob/master/full-proofs/full-proofs.pdf}.
+\end{proof}
+Verification status is in Appendix~\ref{app:lean}.

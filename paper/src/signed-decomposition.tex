@@ -1,0 +1,160 @@
+%% signed-decomposition.tex — Signed Decomposition of the Regression Structure via Linear JEPA Training
+%% Compile: pdflatex signed-decomposition && bibtex signed-decomposition && pdflatex signed-decomposition && pdflatex signed-decomposition
+
+\documentclass[reqno,11pt]{amsart}
+
+%% ── Encoding & fonts ─────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
+
+%% ── Mathematics ──────────────────────────────────────────────────────────────
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{array}
+
+%% ── Figures ──────────────────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{tikz}
+
+%% ── Bibliography ─────────────────────────────────────────────────────────────
+\usepackage[numbers,sort&compress]{natbib}
+
+%% ── Hyperlinks ───────────────────────────────────────────────────────────────
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+\usepackage[colorlinks=true,
+            linkcolor=RoyalBlue4,
+            citecolor=RoyalBlue4,
+            urlcolor=NavyBlue]{hyperref}
+\usepackage{url}
+\usepackage{xurl}
+
+%% ── Page geometry ────────────────────────────────────────────────────────────
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+
+%% ── Enumitem for tighter lists ───────────────────────────────────────────────
+\usepackage{enumitem}
+
+%% ── Bold run-in \paragraph headings ─────────────────────────────────────────
+\makeatletter
+\renewcommand\paragraph{%
+  \@startsection{paragraph}{4}{\z@}%
+    {1.5ex \@plus 0.5ex \@minus 0.2ex}%
+    {-0.6em}%
+    {\normalfont\normalsize\bfseries}}
+\makeatother
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  MACROS
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\newcommand{\lean}[1]{\textup{\small\nolinkurl{#1}}}
+
+\newcommand{\Wbar}{\bar{W}}
+\newcommand{\Sxx}{\Sigma^{xx}}
+\newcommand{\Syx}{\Sigma^{yx}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\rhostar}{\rho_r^*}
+\newcommand{\lamstar}{\lambda_r^*}
+\newcommand{\sigmar}{\sigma_r}
+\newcommand{\rhohat}{\hat{\rho}_r}
+\newcommand{\lamhat}{\hat{\lambda}_r}
+\newcommand{\muhat}{\hat{\mu}_r}
+\newcommand{\rhoplateau}{\rhohat^{\mathrm{plateau}}}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  THEOREM ENVIRONMENTS
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  DOCUMENT
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{document}
+
+\title[Signed Decomposition via Linear JEPA Training]
+      {Signed Decomposition of the Regression Structure\\
+       via Linear JEPA Training:\\
+       An Algorithm, Empirical Validation, and a Machine-Checked Proof}
+
+\author{Goh Cheng Arn David}
+\address{Department of Computer Science, University of Toronto}
+\email{daveed@cs.toronto.edu}
+\date{May 2026}
+
+\begin{abstract}
+A depth-$L$ linear Joint Embedding Predictive Architecture (JEPA) encoder, during
+training, assigns weight to each
+feature indicative of its relevance or usefulness to the prediction
+task. These dynamics are exactly solvable.
+We ask if the signed regression spectrum $\{\rhostar\}$ of the pencil
+$(\Syx, \Sxx)$ can be recovered from the trajectories of these weights
+alone, without knowing the population covariances of the features.
+We present an estimator whose form depends on the sign of each
+feature's regression coefficient $\rhostar$, which is itself read off
+the trajectory's asymptotic shape.
+On the positive branch, the plateau value recovers $\rhostar$ at rate
+$O(\eps^{1/L}|\log\eps|)$, given only the eigenbasis.
+On the negative branch, the decay rate recovers the projected
+covariance at the same order, while the sample covariance recovers the
+quadratic form of the feature's eigenvector.
+The construction is packaged as the algorithm \textsc{PlateauRecover}.
+It is verified in Lean~4, with zero \texttt{sorry} and two named axioms.
+The ordering theorem of \citet{Goh2026ordering} falls out as a
+corollary of the positive-branch trichotomy.
+\end{abstract}
+
+\maketitle
+
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  SECTIONS
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\input{sections/01-intro}
+\input{sections/02-ode}
+\input{sections/03-trichotomy}
+\input{sections/04-estimators}
+\input{sections/05-algorithm-experiments}
+\input{sections/06-related-work}
+\input{sections/07-discussion}
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  BIBLIOGRAPHY
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\bibliographystyle{plainnat}
+\bibliography{signed-decomposition-refs}
+
+\appendix
+
+%% ─────────────────────────────────────────────────────────────────────────────
+%%  APPENDICES
+%% ─────────────────────────────────────────────────────────────────────────────
+
+\input{appendices/appendix-lean}
+\input{appendices/appendix-finite-sample}
+
+\end{document}

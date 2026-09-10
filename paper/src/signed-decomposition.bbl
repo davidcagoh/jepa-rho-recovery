@@ -1,0 +1,135 @@
+\begin{thebibliography}{19}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Arora et~al.(2018)Arora, Cohen, and Hazan]{Arora2018}
+Sanjeev Arora, Nadav Cohen, and Elad Hazan.
+\newblock On the optimization of deep networks: Implicit acceleration by
+  overparameterization.
+\newblock In \emph{ICML}, 2018.
+
+\bibitem[Arora et~al.(2019)Arora, Cohen, Golowich, and Hu]{Arora2019}
+Sanjeev Arora, Nadav Cohen, Noah Golowich, and Wei Hu.
+\newblock A convergence analysis of gradient descent for deep linear neural
+  networks.
+\newblock In \emph{ICLR}, 2019.
+
+\bibitem[Bagnall and Stewart(2019)]{Bagnall2019}
+Alexander Bagnall and Gordon Stewart.
+\newblock Certifying the true error: Machine learning in {Coq} with verified
+  generalization guarantees.
+\newblock In \emph{AAAI}, 2019.
+
+\bibitem[Cui et~al.(2026)Cui, Zhang, Wen, and Wang]{Cui2026}
+Jingyi Cui, Qi~Zhang, Hongwei Wen, and Yisen Wang.
+\newblock A generalization theory for {JEPA}-based world models.
+\newblock arXiv:2606.27014, 2026.
+
+\bibitem[Domin\'e et~al.(2025)Domin\'e, Anguita, Proca, Braun, Kunin, Mediano,
+  and Saxe]{Domine2024}
+Cl\'ementine C.~J. Domin\'e, Nicolas Anguita, Alexandra~M. Proca, Lukas Braun,
+  Daniel Kunin, Pedro A.~M. Mediano, and Andrew~M. Saxe.
+\newblock From lazy to rich: Exact learning dynamics in deep linear networks.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}, 2025.
+\newblock arXiv:2409.14623.
+
+\bibitem[Goh(2026)]{Goh2026ordering}
+David Goh.
+\newblock {JEPA} learns influential features first: A machine-checked
+  generalisation without simultaneous diagonalisability.
+\newblock Manuscript in preparation; companion paper. Lean development public
+  at \url{https://github.com/davidcagoh/jepa-learning-order}, 2026.
+
+\bibitem[Hotelling(1936)]{Hotelling1936}
+Harold Hotelling.
+\newblock Relations between two sets of variates.
+\newblock \emph{Biometrika}, 28\penalty0 (3-4):\penalty0 321--377, 1936.
+
+\bibitem[Klindt et~al.(2026)Klindt, LeCun, and Balestriero]{Klindt2026}
+David Klindt, Yann LeCun, and Randall Balestriero.
+\newblock When does {LeJEPA} learn a world model?
+\newblock arXiv:2605.26379, 2026.
+
+\bibitem[LeCun(2022)]{LeCun2022}
+Yann LeCun.
+\newblock A path towards autonomous machine intelligence.
+\newblock OpenReview preprint, 2022.
+
+\bibitem[Leroy(2009)]{Leroy2009}
+Xavier Leroy.
+\newblock Formal verification of a realistic compiler.
+\newblock \emph{Communications of the ACM}, 52\penalty0 (7):\penalty0 107--115,
+  2009.
+
+\bibitem[Littwin et~al.(2024)Littwin, Saremi, Advani, Thilak, Nakkiran, Huang,
+  and Susskind]{Littwin2024}
+Etai Littwin, Omid Saremi, Madhu Advani, Vimal Thilak, Preetum Nakkiran, Chen
+  Huang, and Joshua Susskind.
+\newblock How {JEPA} avoids noisy features: The implicit bias of deep linear
+  self distillation networks.
+\newblock \emph{arXiv preprint arXiv:2407.03475}, 2024.
+
+\bibitem[Maes et~al.(2026)Maes, {Le Lidec}, Scieur, LeCun, and
+  Balestriero]{Maes2026LeWM}
+Lucas Maes, Quentin {Le Lidec}, Damien Scieur, Yann LeCun, and Randall
+  Balestriero.
+\newblock {LeWorldModel}: Stable end-to-end joint-embedding predictive
+  architecture from pixels.
+\newblock \emph{arXiv preprint arXiv:2603.19312}, 2026.
+
+\bibitem[Marchenko and Pastur(1967)]{Marchenko1967}
+V.~A. Marchenko and L.~A. Pastur.
+\newblock Distribution of eigenvalues for some sets of random matrices.
+\newblock \emph{Mathematics of the USSR-Sbornik}, 1\penalty0 (4):\penalty0
+  457--483, 1967.
+
+\bibitem[Nam et~al.(2025)Nam, Lee, Domin\'e, Park, London, Choi, G\"oring, and
+  Lee]{Nam2025}
+Yoonsoo Nam, Seok~Hyeong Lee, Cl\'ementine C.~J. Domin\'e, Yeachan Park,
+  Charles London, Wonyl Choi, Niclas G\"oring, and Seungjai Lee.
+\newblock Position: Solve layerwise linear models first to understand neural
+  dynamical phenomena (neural collapse, emergence, lazy/rich regime, and
+  grokking).
+\newblock In \emph{International Conference on Machine Learning (ICML),
+  Position Paper Track}, 2025.
+\newblock arXiv:2502.21009.
+
+\bibitem[Saxe et~al.(2014)Saxe, McClelland, and Ganguli]{Saxe2014}
+Andrew~M. Saxe, James~L. McClelland, and Surya Ganguli.
+\newblock Exact solutions to the nonlinear dynamics of learning in deep linear
+  neural networks.
+\newblock In \emph{ICLR}, 2014.
+
+\bibitem[Saxe et~al.(2019)Saxe, McClelland, and Ganguli]{Saxe2019}
+Andrew~M. Saxe, James~L. McClelland, and Surya Ganguli.
+\newblock A mathematical theory of semantic development in deep neural
+  networks.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 116\penalty0
+  (23), 2019.
+
+\bibitem[Sonoda et~al.(2026)Sonoda, Kasaura, Mizuno, Tsukamoto, and
+  Onda]{Sonoda2026}
+Sho Sonoda, Kazumi Kasaura, Yuma Mizuno, Kei Tsukamoto, and Naoto Onda.
+\newblock Lean formalization of generalization error bound by rademacher
+  complexity and dudley's entropy integral.
+\newblock arXiv:2503.19605; accepted at ITP 2026, 2026.
+
+\bibitem[Tropp(2015)]{Tropp2015}
+Joel~A. Tropp.
+\newblock An introduction to matrix concentration inequalities.
+\newblock \emph{Foundations and Trends in Machine Learning}, 8\penalty0 (1--2),
+  2015.
+
+\bibitem[Varre et~al.(2023)Varre, Vladarean, Pillaud-Vivien, and
+  Flammarion]{Varre2023}
+Aditya~Vardhan Varre, Maria-Luiza Vladarean, Loucas Pillaud-Vivien, and Nicolas
+  Flammarion.
+\newblock On the spectral bias of two-layer linear networks.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2023.
+
+\end{thebibliography}

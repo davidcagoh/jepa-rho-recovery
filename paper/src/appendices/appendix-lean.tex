@@ -1,0 +1,98 @@
+\section{Lean verification catalogue}
+\label{app:lean}
+
+The Lean~4 development for this paper is in the repository
+\url{https://github.com/davidcagoh/jepa-rho-recovery} (public)
+and builds against Mathlib v4.28.0
+(commit \texttt{7e01a1b}). Items marked ``(companion paper)'' below cite
+\citet{Goh2026ordering}'s own Lean development, also public, at
+\url{https://github.com/davidcagoh/jepa-learning-order}.
+The crosswalk below maps each numbered theorem in the paper to its Lean
+target. ``Sorry-free'' means the theorem body contains no \texttt{sorry};
+this is independent of axiom use --- a sorry-free result can still depend
+on a named axiom as an explicit hypothesis, disclosed in the Status column.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.0}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.28\linewidth}>{\raggedright\arraybackslash}p{0.50\linewidth}>{\raggedright\arraybackslash}p{0.16\linewidth}@{}}
+\hline
+\textbf{Paper} & \textbf{Lean target} & \textbf{Status} \\
+\hline
+Prop~\ref{prop:quasistatic} (quasi-static)
+  & \lean{QuasiStatic.quasiStatic_rigorous}
+  & sorry-free \\
+Prop~\ref{prop:diagonal-ode} (diagonal ODE)
+  & \lean{Saxe.diagAmp_ODE} (companion paper)
+  & sorry-free$^\dagger$ \\
+Prop~\ref{prop:plateau} (plateau estimator)
+  & \lean{Saxe.rho_hat_plateau_rate}; \lean{Saxe.signed_recovery_pos_magnitude_plateau};
+    \lean{Saxe.sigma_positive_branch_converges}
+  & sorry-free (A2)$^\ddagger$ \\
+Thm~\ref{thm:trichotomy} (sign trichotomy), cases (i)--(ii)
+  & \lean{Saxe.sigma_positive_branch_converges}; \lean{SignedODE.sigma_zero_branch_constant}
+  & sorry-free \\
+Thm~\ref{thm:trichotomy}, case (iii)
+  & not cited$^\S$
+  & argued directly \\
+Rmk~\ref{rem:zero-ceiling-gap} ($L{=}2$ ceiling gap)
+  & \lean{ZeroBranchResidual.zero_branch_L2_ceiling_violation}
+  & sorry-free \\
+Cor~\ref{cor:sign-id} (sign identification)
+  & \lean{SignedRecovery.sign_identification_pos_forward};
+    \lean{SignedRecovery.sign_identification_zero_forward};
+    \lean{SignedRecovery.sign_identification_neg_forward}
+  & sorry-free \\
+Prop~\ref{prop:neg-lambda} (negative-branch $\lamstar$-rate)
+  & not cited$^\S$
+  & argued directly \\
+Thm~\ref{thm:headline-formal} (signed decomposition)
+  & \lean{Main.signed_decomposition}$^\P$
+  & sorry-free \\
+Cor~\ref{cor:finite-sample-end} (finite-sample rate)
+  & \lean{FiniteSample.end_to_end_rate}$^\P$
+  & sorry-free (A1) \\
+\hline
+\end{tabular}
+\end{center}
+
+{\small\noindent
+$^\dagger$ $C_R$ is pinned via a compactness argument, not shown $\eps$-independent
+(\S\ref{sec:discussion}).\quad
+$^\ddagger$ Restricted to $\rhostar>0$, dynamics term only (no sample-noise floor); the
+Lean proof uses qualitative convergence plus a topological existence argument for $T_*$,
+mechanically different from the quantitative Gr\"onwall bound in \S\ref{sec:positive-branch}
+but giving the same rate.\quad
+$^\S$ The negative-branch Lean theorems assume the pre-correction (deprecated) ODE form,
+not this paper's \eqref{eq:diagonal-ode}, and have not been re-verified against it, so
+both results are argued directly in the main text instead.\quad
+$^\P$ Both extended additively from earlier positive-branch-only versions to cover all
+branches, composed from already-proven pieces via the same Delta-method hypothesis-bundling
+style throughout; no previously-verified theorem touched, no new axiom.
+\par}
+
+\paragraph{Named axioms.}
+The full development declares two named axioms; one is load-bearing on
+the finite-sample chain and the other on the dynamics chain.
+
+\begin{enumerate}[label=\textbf{(A\arabic*)},leftmargin=2.5em,itemsep=2pt]
+\item[\textbf{(A1)}] \lean{Concentration.matrix_bernstein_subgaussian}
+--- the matrix Bernstein inequality of \citet[Thm 1.6.2]{Tropp2015},
+quoted per the CompCert convention \citep{Leroy2009}.
+Used by Corollary~\ref{cor:finite-sample-end}. \emph{Why axiomatised:}
+Mathlib has scalar concentration inequalities but not, at the time of
+writing, an operator-norm matrix-Bernstein bound in directly usable
+form; packaging \citet{Tropp2015}'s proof is a Mathlib-engineering
+project, not a result we chose to skip despite it being easy.
+\item[\textbf{(A2)}] \lean{Saxe.saxe_exact_solution_exists}
+--- Picard--Lindel\"of existence for the Saxe-form Bernoulli ODE
+$\dot\sigma = L\mu\sigma^{2-1/L}(\rho - \sigma^L)$ on a compact
+interval. Standard scalar-ODE existence; quoted per CompCert.
+Used by Proposition~\ref{prop:plateau} and downstream. \emph{Why
+axiomatised:} Mathlib has general Picard--Lindel\"of machinery for
+locally Lipschitz vector fields, but instantiating it for this specific
+nonlinear scalar form together with the hitting-time reachability
+clause is, again, an engineering gap rather than a deliberate shortcut
+--- the companion paper's own open-problems discussion
+(\citealt[\S{}Open problems]{Goh2026ordering}) names exactly this as
+future Mathlib-engineering work.
+\end{enumerate}

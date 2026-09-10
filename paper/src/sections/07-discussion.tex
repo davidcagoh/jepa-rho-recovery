@@ -1,0 +1,76 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{Scope and Model Idealizations.}
+Theorem~\ref{thm:headline-formal} answers the question of the
+introduction sharply: linear JEPA's training trajectory contains all
+information needed to identify both the sign and (positive-branch)
+magnitude of $\rhostar$. Negative-branch magnitude is instead farmed
+out to sample covariance, a rate-optimal choice.
+
+\paragraph{Linear-to-Non-Linear Transition.}
+The argument is squarely in the linear, exact-gradient-flow regime.
+Three components break under non-linearisation, as in the LeWorldModel architecture of
+\citet{Maes2026LeWM}. First,
+optimal $V$ exists in closed form, which fails for non-linear
+predictors. Second, the generalised eigendecomposition of $(\Syx, \Sxx)$
+is replaced by an unknown learned inner product (the encoder's pre-image
+of the predictor norm), making the analogue of $\rhostar$ implicitly
+defined. Third, the diagonal-amplitude reduction is special to the
+linear case.
+Yet, establishing sufficient-statistic structure for
+the linear case is the prerequisite for asking which parts of the
+picture survive non-linearisation at all, and any answer will likely
+involve a learned metric on the encoder output rather than the fixed
+$\Sxx$ inner product.
+Within the linear setting, assumption~\ref{ass:gap}'s strictly separated discrete spectrum is
+unrealistic for high-dimensional inputs, where eigenvalues bunch under
+random projection, collapsing $\delta$ and degrading the
+basis-perturbation bound~\eqref{eq:wedin}. A \citet{Marchenko1967}-type
+density-of-states formulation is the natural fix, outside our present
+scope.
+
+\paragraph{Technical Refinements \& Open Analytical Problems.}
+Two gaps remain inside the linear argument itself, both already disclosed
+at their point of use rather than new to this discussion. First,
+Proposition~\ref{prop:diagonal-ode}'s residual constant $C_R$ is not yet
+known to be $\eps$-independent: the current derivation discharges it via
+a compactness argument. Pinning down an explicit constant needs a
+leading-order-cancellation argument for $V_{\mathrm{qs}}\Wbar$ that has
+not been carried out (Appendix~\ref{app:lean}). Second,
+Remark~\ref{rem:zero-ceiling-gap} shows the residual bound alone does not
+suffice to establish the sign trichotomy's case (ii) ceiling
+(Theorem~\ref{thm:trichotomy}) at $L=2$ --- the one depth tested
+empirically. (This does not show the ceiling is actually violated
+in practice.) A third, downstream gap follows from the second:
+Remark~\ref{rem:open-classifier} notes that no finite-time, noise-robust
+decision rule yet separates the zero and negative branches. This is
+because the qualitative ceiling such a rule would rely on is itself
+unresolved at $L=2$.
+Machine-checking via Lean (\S\ref{sec:related}) rules out logical gaps and
+forgotten edge cases in the stated theorems. It does not certify that
+the definitions are the right ones, that the assumptions are natural, or
+that the result is interesting, and we do not treat it as doing so.
+The two named axioms in Appendix~\ref{app:lean} are the places where the
+Lean chain stops and ordinary mathematical trust in a cited result takes
+over. The first gap above is an incomplete derivation internal
+to this paper's own argument, marked explicitly (Appendix~\ref{app:lean},
+$\dagger$). The second is its own separately
+named row in Appendix~\ref{app:lean}'s theorem-to-Lean crosswalk table. 
+
+\paragraph{Empirical Extensions \& Future Applications.}
+Some experimental results diverge from what the theory alone predicts, and several
+natural empirical extensions remain. The diagonal-ODE sanity check's residual
+(\S\ref{ssec:exp-ode-form}) sits well above Proposition~\ref{prop:diagonal-ode}'s
+asymptotic bound; isolating the constant separating full-batch loss normalisation from
+continuous-time gradient-flow rescaling remains unresolved. Whether $\{\rhohat\}$
+predicts downstream-task ordering the way the dynamics-ordering theorem predicts
+feature-learning ordering is likewise open. \textsc{PlateauRecover} still awaits a real,
+non-synthetic representation-learning benchmark --- training a small JEPA from random
+initialisation and reading off $\rhohat$ directly. The experiments reported here
+(\S\ref{sec:experiments}) also cover only the positive branch, leaving the zero and
+negative branches, the sign trichotomy of \S\ref{sec:trichotomy}, and the decay-to-zero
+classifier of \S\ref{sec:signed-recovery} for later empirical work, despite signed
+recovery being a headline contribution. A direct comparison against
+generalised-eigenvalue regression at fixed $n$ would locate the widest
+sample-efficiency gap between the two approaches.

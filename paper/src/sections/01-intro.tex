@@ -1,0 +1,223 @@
+\section{Introduction}
+\label{sec:intro}
+
+Joint Embedding Predictive Architecture (JEPA) has been the subject of much active development. It
+predicts in latent/embedding space rather than reconstructing pixels, discarding
+irrelevant or unpredictable detail to focus on high-level structure. However, almost nothing is known rigorously about what its training dynamics do to the
+underlying data structure.
+
+We find that JEPA training dynamics themselves partition every feature direction by its true
+predictive relationship to the target. We prove that in the linear JEPA
+context, we get signed, per-feature regression, decodable from the
+encoder's internal weight trajectory. We have an explicit signed
+estimator computable from the trajectory alone, and an easy to deploy
+algorithm we call \textsc{PlateauRecover} (code provided). Concretely:
+the sign of $\rhostar$ is always recoverable from the trajectory
+$\sigmar(t)$ alone, and on the positive branch so is its magnitude
+(given only the eigenbasis, no further population-covariance input
+needed) at rate $O(\eps^{1/L}|\log\eps|)$, a corollary of the
+results in \S\ref{sec:estimating-spectrum}
+(Theorem~\ref{thm:headline-formal}).
+
+\label{ssec:positioning}
+In the linear case, everything we recover here is something OLS (or
+other gradient-descent methods) could already give us. We care about
+it because it is a critical stepping stone to the non-linear regime of
+representation learning on unlabeled data. There, there may be no
+clean $y$, no fixed $\Sigma^{xx}$-type inner product, and no
+normal-equations solver to fall back on. In particular, the
+LeWorldModel architecture of \citet{Maes2026LeWM} is exactly such a
+case. There, the training trajectory is the only handle on the
+underlying regression structure: $\{\rhostar\}$ can be read off a
+JEPA training trajectory without ever forming $\Sigma^{xx}, \Sigma^{yx}$.
+
+\subsection*{Notation}
+
+We fix notation for the covariances and the regression spectrum they define.
+For data pairs $(x,y)\in\RR^d\times\RR^d$, write
+$\Sigma^{xx} := \EE[xx^\top] \succ 0$ for the input covariance and
+$\Sigma^{yx} := \EE[yx^\top]$ for the target-input cross-covariance.
+The regression structure we recover throughout the paper is read off the
+generalized eigenproblem
+\[
+\Sigma^{yx} v_r^* = \rho_r^* \Sigma^{xx} v_r^*.
+\]
+Unlike an ordinary eigenvector, $v_r^*$ is fixed only up to an
+arbitrary rescaling. The generalized eigenvalue $\rho_r^*$ itself is
+untouched by this rescaling, since it is a property of the
+eigen-direction rather than of any particular representative $v_r^*$.
+What does move is the $\Sigma^{xx}$-quadratic form
+$\mu_r := v_r^*\cdot\Sigma^{xx}v_r^*$ of $v_r^*$ (guaranteed $>0$ since
+$\Sigma^{xx}\succ0$), and with it the projected covariance
+$\lambda_r^* := \rho_r^*\mu_r$. This invariance makes $\rho_r^*$ the
+signed regression coefficient the rest of the paper tracks. The
+collection $\{\rho_r^*\}_{r=1}^d$ (one signed scalar per feature
+direction) is the ``regression spectrum'' of the pencil
+$(\Sigma^{yx}, \Sigma^{xx})$ we are after. We package the triple
+$(\rhostar, \mu_r, v_r^*)$ into a single labeled object that fixes this
+scale-dependence once and for all:
+
+\begin{definition}[Signed generalised eigenbasis]
+\label{def:eigenbasis}
+A \emph{signed generalised eigenbasis} for the pencil $(\Syx, \Sxx)$ is
+a tuple $\{(\rhostar, \mu_r, v_r^*)\}_{r=1}^{d}$ with
+$\rhostar \in \RR$, $v_r^* \in \RR^d \setminus \{0\}$,
+$v_r^* \cdot \Sxx v_s^* = 0$ for $r \neq s$, and
+\begin{equation}
+\label{eq:gen-eigenpair}
+\Syx v_r^* = \rhostar \Sxx v_r^*,
+\qquad
+\mu_r := v_r^* \cdot \Sxx v_r^*,
+\qquad
+\lamstar := \rhostar \mu_r.
+\end{equation}
+$\mu_r > 0$ is \emph{not} normalised to $1$. It is the free
+$\Sxx$-quadratic form of the (arbitrarily scaled) eigenvector $v_r^*$,
+matching \lean{Basic.SignedGenEigenpair.hmu_def}. Rescaling $v_r^*$
+rescales $\mu_r$ and $\lamstar$ together while leaving
+$\rhostar = \lamstar/\mu_r$ fixed, so $(\lamstar, \mu_r)$ is only
+meaningful jointly, given a fixed scale for $v_r^*$. $\rhostar$ itself
+is the scale-invariant quantity this paper recovers.
+\end{definition}
+
+\label{ssec:linear-jepa}
+We now describe the model whose training we study: fix dimension $d$
+and depth $L\ge2$ throughout (equal input/output dimension; the
+rectangular case is left to future work). A depth-$L$ linear JEPA
+factors its encoder as $\bar W = W_L\cdots W_1$,
+each factor $W_a\in\RR^{d\times d}$ kept separate (never collapsed into
+one matrix), plus a single unfactored predictor $V\in\RR^{d\times d}$.
+This model trains to minimize the squared reconstruction error
+\[
+\mathcal{L}(\bar W, V) \;=\; \tfrac{1}{2}\,\EE\!\left[\big\|y - V \bar W x\big\|_2^2\right].
+\]
+
+This same eigenbasis is where the resulting training trajectory lives:
+under aligned balanced initialisation, the encoder's weight matrix
+$\Wbar(t)$ stays diagonal in it for all $t \ge 0$. Its diagonal entry
+$\sigmar(t) := v_r^{*\top}\Wbar(t)v_r^*$ is the amplitude of feature
+$r$ at time $t$. It obeys a Bernoulli-type ODE decoupled across
+features at leading order, stated precisely as
+Proposition~\ref{prop:diagonal-ode} in \S\ref{sec:diagonal-ode}
+(equation~\eqref{eq:diagonal-ode}). Recovering $\{\rhostar\}$ means
+understanding what training under this loss does to $\bar W$ and $V$
+over time. This is where population gradient flow comes in.
+
+\subsection*{Assumptions}
+\label{ssec:assumptions-intro}
+
+We work throughout under the following standing assumptions.
+
+\begin{enumerate}[label=(A\arabic*),ref=A\arabic*,leftmargin=2.5em,itemsep=4pt]
+
+\item \label{ass:population-flow}
+\textbf{Exact population gradient flow.} Training proceeds under
+\begin{equation}
+\label{eq:jepa-flow}
+\dot{\Wbar} = -\nabla_{\Wbar} \mathcal{L}
+\ \ \text{(shorthand for the preconditioned flow of Lemma~\ref{lem:grad-flow})},
+\qquad
+\dot{V} = -\nabla_{V} \mathcal{L}.
+\end{equation}
+This is the theoretical idealisation; Algorithm~\ref{alg:plateau-recover}
+(\S\ref{sec:algorithm}) instead runs discretised SGD on finite samples.
+
+\item \label{ass:aligned-init}
+\textbf{Aligned balanced initialisation.} We restrict throughout to
+initialisation at scale $\eps\in(0,1)$:
+\begin{equation}
+\label{eq:init}
+\bar W(0) = \eps \cdot U_x^\top U_x,
+\qquad
+V(0) = \eps \cdot U_y U_x^\top,
+\end{equation}
+where $U_x$ is the orthogonal basis of generalised eigenvectors of the
+pencil $(\Sigma^{yx}, \Sigma^{xx})$ and $U_y$ its $\Sigma^{xx}$-orthonormal
+image under $\Sigma^{yx}$ (Definition~\ref{def:eigenbasis}). The
+balance condition is preserved under \eqref{eq:jepa-flow}
+\citep{Saxe2014,Arora2018}. Exact alignment cannot hold in practice ---
+the eigenbasis is unknown at initialisation; every identifiability result
+here is stated under \eqref{eq:init} exactly, with rate degradation under
+non-aligned initialisation not established.
+
+\item \label{ass:gap}
+\textbf{Strict spectral gap.} The signed values $\{\rhostar\}_{r=1}^d$
+are strictly distinct and we order them as
+$\rho_1^* > \rho_2^* > \cdots > \rho_d^*$. Write
+$\delta_r := \min_{s \neq r}|\rhostar - \rho_s^*|$ for the gap and
+$\delta := \min_r \delta_r$ for the minimum gap. Needed only for the
+finite-sample chain (\S\ref{sec:finite-sample}); single-feature,
+pure-trajectory results need no gap condition.
+
+\item \label{ass:traj-reg}
+\textbf{Trajectory regularity.} There exist constants $K_1, c_w > 0$,
+independent of $\eps$, such that along the JEPA trajectory on
+$[0, t_{\max}^*]$: (i) the encoder moves slowly,
+$\|\dot{\Wbar}(t)\|_F \le K_1\,\eps^2$; (ii) the diagonal amplitudes of
+Definition~\ref{def:eigenbasis} stay bounded below,
+$\sigmar(t) \ge c_w\,\eps^{1/L}$. Both hold with equality up to constants
+at $t=0$ under~\eqref{eq:init}. We do not re-derive their propagation to
+every $t \in [0, t_{\max}^*]$ here; instead we take them as the standard
+trajectory-regularity condition that informal ODE learning-dynamics
+analyses typically leave implicit. This matches the hypothesis
+structure of the companion's own \lean{bootstrap_consistency}
+(\lean{hWbar_slow}, \lean{hdiag_t} in \texttt{BootstrapLemmas.lean}).
+
+\end{enumerate}
+
+\subsection*{Proof strategy}
+\label{ssec:proof-strategy}
+
+We analyze the global training dynamics by applying gradient flow at the factor
+level---to each matrix $W_a$ individually and to $V$ directly---rather than to the
+end-to-end product $\bar W$ as one matrix. This factorized parameterization induces
+the depth-dependent preconditioned flow of \eqref{eq:jepa-flow}
+(Lemma~\ref{lem:grad-flow}), yielding the characteristic Saxe-style depth exponents.
+The proof reduces this coupled matrix system to scalar trajectory recovery in four
+steps.
+
+The predictor $V$ relaxes on a timescale set by $\bar W(t)$'s smallest singular value,
+substantially faster than $\bar W$'s own evolution. Uniform invertibility of
+$\bar W\Sxx\bar W^\top$ (Corollary~\ref{cor:pd-lower}) lets us substitute the
+quasi-static decoder $V \leftarrow V_{\mathrm{qs}}(\bar W)$, eliminating $V$
+analytically and reducing the joint $(\bar W, V)$ dynamics to an autonomous ODE in
+$\bar W$ alone (Proposition~\ref{prop:quasistatic}).
+
+Projecting this ODE onto the generalised eigenbasis $\{v_r^*\}_{r=1}^d$ of
+$(\Syx, \Sxx)$, under aligned balanced initialisation $\bar W(t)$ remains diagonal up
+to a small off-diagonal leakage $c_{rs}(t)$, uniformly bounded by a
+fundamental-theorem-of-calculus and Cauchy--Schwarz argument (Lemma~\ref{lem:offdiag}),
+yielding a system of decoupled scalar Bernoulli ODEs (Proposition~\ref{prop:diagonal-ode}).
+Diagonalising a Bernoulli-type ODE this way is classical, and we do not claim
+otherwise --- it is the one technical step the whole paper leans on without
+re-deriving, the step at which simultaneous-diagonalisability of $\Sigma^{xx}$ and
+$\Sigma^{yx}$ would otherwise be needed. What is new is what the resulting closed form
+is used for: turning a purely qualitative dynamics fact (\emph{which} feature is
+learned first) into an explicit, rate-optimal, signed estimator computable from the
+trajectory alone.
+
+Each scalar ODE exhibits three qualitatively distinct regimes dictated by
+$\rhostar$'s sign (Theorem~\ref{thm:trichotomy}), whose asymptotic shape uniquely
+identifies $\operatorname{sign}(\rhostar)$ (Corollary~\ref{cor:sign-id}). On the
+positive branch, the plateau value yields $\rhostar$ directly
+(Proposition~\ref{prop:plateau}); on the negative branch, late-time decay yields a
+projected-covariance estimate (Proposition~\ref{prop:neg-lambda}). The two branches
+combine into the unified estimator (Theorem~\ref{thm:headline-formal}).
+
+In practice only $n$ samples are available: replacing the population covariances with
+sample estimates $(\hat\Syx,\hat\Sxx)$ introduces basis perturbation, bounded via
+matrix Bernstein concentration plus a Wedin-type generalized-eigenvector perturbation
+bound (Corollary~\ref{cor:finite-sample-end}). The chain is then packaged as an
+algorithm and validated empirically (\S\S\ref{sec:algorithm}--\ref{sec:experiments}).
+
+\subsection*{Outline}
+\label{ssec:outline}
+
+\S\S\ref{sec:quasistatic}--\ref{sec:experiments} carry out the
+four-step argument sketched above, in the same order.
+\S\ref{sec:related} situates the result against prior work;
+\S\ref{sec:discussion} discusses the linear-to-non-linear transition
+and open questions. Appendix~\ref{app:lean} catalogues the Lean
+signatures and the two named axioms; Appendix~\ref{app:finite-sample-derivation}
+gives proofs deferred from the main text, including the full
+finite-sample perturbation derivation.

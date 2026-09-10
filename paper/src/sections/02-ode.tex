@@ -1,0 +1,172 @@
+\section{Resolving the Population JEPA Flow into a System of ODEs}
+
+This section reduces the coupled $(\Wbar, V)$ system driven by~\eqref{eq:jepa-flow} to a
+single scalar ODE per feature, in three steps. A uniform off-diagonal bound
+(\S\ref{sec:ode-prelim}) guarantees invertibility along the trajectory; a
+quasi-static reduction eliminates $V$ analytically (\S\ref{sec:quasistatic}); and a
+projection onto the generalised eigenbasis gives the closed-form diagonal ODE
+(\S\ref{sec:diagonal-ode}).
+
+\subsection{Off-diagonal control}
+\label{sec:ode-prelim}
+
+Before the quasi-static decoder can be defined, we need a uniform bound on how far
+$\Wbar(t)$ drifts off-diagonal in the generalised eigenbasis $\{v_r^*\}$. This bound keeps
+$\Wbar(t)\Sxx\Wbar(t)^\top$ invertible along the entire trajectory.
+
+\begin{lemma}[Off-diagonal bound]
+\label{lem:offdiag}
+Write $c_{rs}(t) := v_r^{*\top} \Wbar(t) v_s^*$ for the off-diagonal amplitude between
+features $r \neq s$ (Definition~\ref{def:eigenbasis}); $c_{rs}$ is not identically zero
+without the simultaneous-diagonalisability hypothesis of \citet{Littwin2024}. Under
+Assumption~\ref{ass:traj-reg}(i)-(ii) and Assumption~\ref{ass:aligned-init}, for $L \ge 2$
+there exists $C'$, depending only on $K_1$, $c_w$, $L$, and the eigenbasis, such that
+\begin{equation}
+\label{eq:offdiag-bound}
+|c_{rs}(t)| \;\le\; C' \eps^{1/L} \qquad \forall\, r \neq s,\ t \in [0, t_{\max}^*].
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Proof deferred to Appendix~\ref{app:finite-sample-derivation}
+(\S\ref{ssec:offdiag-proof}).
+\end{proof}
+
+\begin{corollary}[Positive-definite lower bound]
+\label{cor:pd-lower}
+Under Assumption~\ref{ass:traj-reg}(ii) and Lemma~\ref{lem:offdiag}, provided the diagonal
+dominance condition $C'(d-1) < c_w$ holds, there exists $c_0 > 0$, depending only on
+$\lambda_{\min}(\Sxx)$, $c_w$, $C'$, and $d$, such that
+\[
+\Wbar(t)\Sxx\Wbar(t)^\top \;\succeq\; c_0\,\eps^{2/L}\,I \qquad \forall t \in [0, t_{\max}^*],
+\]
+so $\Wbar(t)\Sxx\Wbar(t)^\top$ is invertible along the entire trajectory.
+\end{corollary}
+
+\begin{proof}
+Proof deferred to Appendix~\ref{app:finite-sample-derivation}
+(\S\ref{ssec:pd-lower-proof}).
+\end{proof}
+
+\subsection{Quasi-static decoder}
+\label{sec:quasistatic}
+
+We first derive the preconditioned flow this factorization induces, before eliminating $V$ below.
+
+\begin{lemma}[Coupled gradient-flow system]
+\label{lem:grad-flow}
+The population JEPA loss $\mathcal{L}(\Wbar, V) = \tfrac12\EE\|y - V\Wbar x\|_2^2$ has
+gradients
+\begin{equation}
+\label{eq:grads}
+\nabla_V \mathcal{L} \;=\; \big(V\Wbar\Sxx - \Wbar\Syx\big)\Wbar^\top,
+\qquad
+\nabla_{\Wbar} \mathcal{L} \;=\; V^\top\big(V\Wbar\Sxx - \Wbar\Syx\big).
+\end{equation}
+Under aligned-balanced initialisation (Assumption~\ref{ass:aligned-init}), gradient flow on
+the individual depth-$L$ factors $\{W^a\}_{a=1}^L$ is equivalent to \emph{preconditioned}
+gradient flow on the end-to-end product $\Wbar = W^L \cdots W^1$:
+\begin{equation}
+\label{eq:preconditioned-flow}
+\dot{\Wbar}
+\;=\;
+-\sum_{a=1}^{L} \big[\Wbar\Wbar^\top\big]^{(a-1)/L}
+\big(-\nabla_{\Wbar}\mathcal{L}\big)
+\big[\Wbar^\top\Wbar\big]^{(L-a)/L},
+\end{equation}
+which reduces, in the diagonal-amplitude basis, to the scalar preconditioner
+\begin{equation}
+\label{eq:preconditioner}
+P_{rs}(t) \;=\; \sum_{a=1}^L \sigma_r(t)^{2(L-a)/L}\,\sigma_s(t)^{2(a-1)/L},
+\qquad
+P_{rr}(t) \;=\; L\,\sigma_r(t)^{2(L-1)/L},
+\end{equation}
+the latter producing the Saxe-style exponents throughout this paper.
+\end{lemma}
+
+\begin{proof}
+Proof deferred to Appendix~\ref{app:finite-sample-derivation}
+(\S\ref{ssec:grad-flow-proof}).
+\end{proof}
+
+The predictor $V(t)$ contracts to its instantaneous least-squares
+optimum on a fast timescale set by the smallest singular value of
+$\Wbar(t)$. This is much faster than $\Wbar(t)$ itself evolves under the
+balanced flow.
+Setting $\nabla_V\mathcal{L} = (V\Wbar\Sxx - \Wbar\Syx)\Wbar^\top$
+(Lemma~\ref{lem:grad-flow}) to zero and solving for $V$ gives
+\[
+V_{\mathrm{qs}}(\Wbar) \;:=\; \Wbar \Syx \Wbar^\top (\Wbar \Sxx \Wbar^\top)^{-1}
+\]
+for the \emph{quasi-static decoder}: the value of $V$ that minimises
+$\mathcal{L}(\Wbar, V)$ for fixed $\Wbar$. This is valid whenever
+$\Wbar\Sxx\Wbar^\top$ is invertible, which Corollary~\ref{cor:pd-lower} guarantees
+along the JEPA trajectory — making the definition well-posed for every
+$t \in [0, t_{\max}^*]$, not just generically.
+
+\begin{proposition}[Quasi-static decoder, rigorous]
+\label{prop:quasistatic}
+Under the JEPA flow~\eqref{eq:jepa-flow} with
+initialisation~\eqref{eq:init}, and given the invertibility of
+Corollary~\ref{cor:pd-lower} that makes $V_{\mathrm{qs}}$ well-defined along the
+trajectory, there exists a constant $C_{\mathrm{qs}}$
+depending only on $L$, $\|\Sxx\|$, $\|(\Sxx)^{-1}\|$, and $\|\Syx\|$ such
+that
+\[
+\big\| V(t) - V_{\mathrm{qs}}(\Wbar(t)) \big\|_F
+\;\le\;
+C_{\mathrm{qs}} \cdot \eps^{2(L-1)/L}
+\qquad
+\forall t \in [0, t_{\max}^*],
+\]
+where $t_{\max}^* = \mathrm{poly}(\eps^{-1/L})$ is the horizon up to
+which Proposition~\ref{prop:plateau} is stated.
+\end{proposition}
+
+\begin{proof}
+Proof deferred to Appendix~\ref{app:finite-sample-derivation}
+(\S\ref{ssec:quasistatic-proof}).
+\end{proof}
+
+\subsection{Generalised diagonal ODE}
+\label{sec:diagonal-ode}
+
+Projecting the quasi-static ODE onto the eigenbasis gives one scalar Bernoulli-type equation per feature.
+
+\begin{proposition}[Generalised diagonal ODE]
+\label{prop:diagonal-ode}
+Let $\sigmar(t)$ be the diagonal amplitudes of Definition~\ref{def:eigenbasis}.
+Under Proposition~\ref{prop:quasistatic} and Assumption~\ref{ass:gap},
+\begin{equation}
+\label{eq:diagonal-ode}
+\dot{\sigmar}(t)
+\;=\;
+L\,\mu_r\,\sigmar(t)^{2-1/L}\,\big(\rhostar - \sigmar(t)^L\big)
+\;+\;
+R_r(t, \eps),
+\qquad
+|R_r(t, \eps)| \le C_R\,\eps^{(2L-1)/L},
+\end{equation}
+uniformly on $[0, t_{\max}^*]$, with $C_R$ depending on the population
+covariances, $L$, and the spectral gap $\delta$ but not on $\eps$.
+\end{proposition}
+
+The residual's actual structure is visible once the driving term is expanded, in
+two steps of different epistemic weight. This expansion also exposes the one place
+this proposition is not yet fully closed.
+
+\begin{proof}[Proof sketch]
+Treating $\Wbar(t)$ as exactly diagonal (correction controlled by Lemma~\ref{lem:offdiag})
+projects the preconditioned flow~\eqref{eq:preconditioned-flow} onto
+$\dot\sigmar(t) \approx -L\sigmar(t)^{2(L-1)/L}\cdot v_r^{*\top}\nabla_{\Wbar}\mathcal{L}\,v_r^*$.
+Writing $\Delta V := V - V_{\mathrm{qs}}(\Wbar)$, invertibility (Corollary~\ref{cor:pd-lower})
+and the eigenpair relation collapse this exactly to
+$(Vv_r^*)^\top\Delta V\,\Wbar\Sxx v_r^*$, giving the Bernoulli drift
+$L\mu_r\sigmar^{2-1/L}(\rhostar-\sigmar^L)$ from $\Delta V$'s self-consistent
+leading-order size (a singular-perturbation reduction). The residual $R_r$ is exactly two
+contributions: the gap in Proposition~\ref{prop:quasistatic}'s bound on $\Delta V$, and
+the off-diagonal correction (Lemma~\ref{lem:offdiag}). Full derivation in the
+supplementary proofs document (\S1),
+\url{https://github.com/davidcagoh/jepa-rho-recovery/blob/master/full-proofs/full-proofs.pdf}.
+\end{proof}
+Verification status and the one open gap in $C_R$'s constant are in Appendix~\ref{app:lean}.

@@ -1,0 +1,73 @@
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Joint Embedding Predictive Architecture (JEPA)}
+\citet{LeCun2022} named the JEPA architecture, gave its two-encoder latent-prediction
+diagram, and laid out the collapse taxonomy later studies inherit --- a self-supervised
+encoder trained without care can converge to trivial solutions, so anti-collapse
+mechanisms are a live engineering concern. Since then the field has moved toward using
+JEPA as a world model, e.g.\ \citet{Maes2026LeWM}'s LeWorldModel.
+
+\paragraph{Non-OLS methods for analysing regression structure.}
+The pencil $(\Syx,\Sxx)$ this paper recovers is a classical object of study. \citet{Hotelling1936} introduced canonical correlation
+analysis on exactly this generalized eigenproblem. Closer to
+a dynamics-based claim, \citet{Varre2023} characterize the $t\to\infty$ limit of
+gradient flow on a plain two-layer linear network as a min-norm interpolator --- an
+ordering/timing result with no signed value and depth=$2$. Two recent JEPA-theoretic results also
+recover structure without training dynamics: \citet{Klindt2026} prove identifiability
+of LeJEPA's learned representation at the population optimum up to an orthogonal
+transformation, while \citet{Cui2026} bound downstream planning regret via a low-rank spectral factorization
+of an action-conditioned co-occurrence matrix, only once the encoder and predictor
+already sit at their population-optimal solution. None of the above use training
+dynamics as the recovery mechanism: the classical estimators require the full sample
+covariance (or co-occurrence) structure in hand, and \citeauthor{Klindt2026}/
+\citeauthor{Cui2026} characterize representations only once optimization has already
+finished. The present paper recovers the same kind of object from training dynamics
+alone, without ever forming $\hat\Sxx, \hat\Syx$ directly.
+
+\paragraph{Analysing regression structure via model training dynamics.}
+A separate line of work asks whether training dynamics themselves reveal this
+structure, without a closed-form estimator. \citet{Littwin2024} shows gradient-flow
+dynamics of a linear JEPA pair, with no added regularizer, preferentially learn
+high-regression-coefficient features faster, at critical time
+$\tilde t_r^* \asymp 1/(\lamstar \eps^{(2L-1)/L})$ — dynamics do encode regression
+structure, at a rate in the same $\eps^{1/L}$-family as this paper's own
+$O(\eps^{1/L}|\log\eps|)$ recovery rate (\S\ref{sec:estimating-spectrum}). But the
+result assumes $\Sxx$ and $\Syx$ share an eigenbasis (known in advance) and recovers a
+magnitude-linked critical time, not a signed coefficient - an assumption relaxed by \citet{Goh2026ordering}.
+\citet{Domine2024} generalizes along a different axis — exact solutions across a continuous
+$\lambda$-balanced initialization spectrum, not only the zero-balanced case — but
+$\tilde\Sxx,\tilde\Syx$ stay fixed and known throughout. 
+Together these three confirm training dynamics genuinely encode
+regression structure but stop short on different axes. The present paper is the first to close all three at once,
+recovering an unknown, signed structure from dynamics alone.
+
+\paragraph{Solving training dynamics.}
+This paper's own proof strategy inherits its central diagonalization step from
+\citet{Saxe2014,Saxe2019}, who first showed that under aligned, orthogonal
+initialization a deep linear network's coupled gradient-flow ODEs decouple into
+per-mode scalar Bernoulli-type equations with closed-form sigmoidal trajectories; we
+diagonalize onto the generalized eigenbasis instead of an ordinary one, yielding the
+same Saxe-style depth exponents, but the decoupling step itself is classical and not
+re-derived here. \citet{Arora2018,Arora2019} formalize the ``balanced initialization''
+condition this paper's own Assumption~\ref{ass:aligned-init} restricts to, showing deep
+linear gradient descent is equivalent to a preconditioned single-layer system with a
+rigorous linear-rate convergence guarantee under approximately balanced initialization
+and whitened data --- the optimization/convergence-rate side of the same initialization
+concept \citeauthor{Saxe2014} solve exactly. \citet{Nam2025} instead argues,
+independent of any new dynamics result, that layerwise-linear networks are the right
+minimal lens for training-dynamics phenomena generally, directly supporting this
+paper's own reason for studying the linear case first (\S\ref{ssec:positioning}).
+Together these establish that deep linear training dynamics are exactly solvable and worth studying on purpose
+even though OLS could already recover the population structure directly; none ask this
+paper's own question of that same machinery: identifiability of an unknown, signed
+structure.
+
+\paragraph{Formal verification of learning theory.}
+Machine-checked learning theory is a small but growing body of work.
+\citet{Bagnall2019} started this line, formalizing PAC bounds in Coq for finite
+hypothesis classes. \citet{Sonoda2026} made the major advance to infinite hypothesis
+classes, in Lean~4 against Mathlib --- the same proof assistant this paper uses. A companion repository
+(\url{https://github.com/davidcagoh/jepa-rho-recovery}, public) contains the Lean
+development and the \textsc{PlateauRecover} reference implementation, alongside, not
+in place of, the paper's main mathematical contribution. 
