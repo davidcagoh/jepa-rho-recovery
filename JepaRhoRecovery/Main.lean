@@ -30,6 +30,17 @@ non-trivially-constraining bundle of one layer's output:
     (`SignedRecovery.signed_recovery_pos_magnitude_jepa`; sorry-free
     modulo the Path C envelope-sharpening named sorry
     `CriticalTime.purified_laurent_bound`).
+  * `h_neg_mag` — Layer 4.2(ii⁻) negative-branch magnitude rate
+    (`SignedRecovery.signed_recovery_neg_magnitude_jepa`; sorry-free
+    composition of the trajectory-derived λ̂-rate
+    `signed_recovery_neg_lambda_rate` with an ordinary sample-covariance
+    concentration bound on μ̂, taken as a hypothesis the same way
+    `h_pos_mag`'s constant is; combined via the delta method
+    `ρ̂ = λ̂/μ̂`). Unlike `h_pos_mag`, the bound carries an additive
+    `C · delta_mu r` floor that does not vanish as `ε → 0` — the
+    irreducible sample-noise term, honestly reflecting that magnitude
+    recovery on the negative branch is not obstructed but requires
+    the covariance input (§4.2(iii) revisited).
   * `h_ordering` — Layer 5.1 (`MixedOrdering.mixed_sign_ordering`;
     sorry-free).
 
@@ -66,12 +77,16 @@ JEPA training trajectory admits an estimator ρ̂ that
   (1) recovers the sign of each ρ_r* (for r ∈ P ∪ N) and is zero on
       the ker-spectrum (ρ_r* = 0);
   (2) achieves the inversion rate `O(ε^{1/L}|log ε|)` for r ∈ P;
-  (3) negative-magnitude recovery is *obstructed* — Layer 4.2(iii); the
-      statement asserts only sign for r ∈ N, not magnitude;
+  (3) achieves the composed rate `O(ε^{1/L}|log ε| + delta_mu r)` for
+      r ∈ N (Fix 1 — `h_neg_mag`, composing the trajectory-derived
+      λ̂-rate with a μ̂-concentration bound via the delta method; the
+      additive `delta_mu r` term is the irreducible sample-noise floor,
+      not a trajectory-only rate — see `SignedRecovery.
+      signed_recovery_neg_magnitude_jepa`);
   (4) under the gap condition, positive learning critical times are
       strictly less than negative suppression thresholds.
 
-The Lean statement bundles the four layer outputs as named hypotheses
+The Lean statement bundles the five layer outputs as named hypotheses
 and asserts the uniform-`ε_max` existential.
 -/
 
@@ -86,19 +101,24 @@ and asserts the uniform-`ε_max` existential.
       (1) `sign(ρ̂ r) = sign(ρ_r*)` for every `r ∈ P ∪ N`, and `ρ̂ r = 0`
           on `ker (sign ρ*)`;
       (2) `|ρ̂ r − ρ_r*| ≤ C_eps · ε^{1/L} · |log ε|` for `r ∈ P`;
-      (3) for `r ∈ N`, no magnitude bound is claimed (Layer 4.2(iii));
+      (3) `|ρ̂ r − ρ_r*| ≤ C_eps · ε^{1/L} · |log ε| + C_eps · delta_mu r`
+          for `r ∈ N` (Fix 1: negative-branch magnitude, bundled from
+          `h_neg_mag` — no longer the pure sign-only obstruction of the
+          original Layer 4.2(iii) statement; the additive term is the
+          sample-noise floor from the μ̂-concentration input);
       (4) under the gap condition `min_{s ∈ P} ρ_s* > max_{r ∈ N} |ρ_r*|`,
           `τ_pos(s, ε) < τ_neg(r, ε)` for every `s ∈ P, r ∈ N`.
 
     **Proof sketch.** Each layer hypothesis gives a per-feature `ε_0(r)`.
-    Apply `finset_forall_eps₂` over `P` to extract a uniform threshold
-    `ε_pos_min` for sign-positivity and magnitude; similarly over `N` for
-    sign-negativity; intersect with `ε_ord` from `h_ordering`. The
-    resulting `ε_max := min(ε_pos_min, ε_neg_min, ε_ord, 1)` is positive.
-    `C_eps` is taken as the maximum of the per-feature `C(r)` from
-    `h_pos_mag` (sup over a finite Finset, defaulting to `1` if `P` is
-    empty). The proof then case-splits on `ε < ε_max` and dispatches each
-    conjunct from the corresponding layer output.
+    Apply `finset_forall_eps₂` over `P` (resp. `N`) to extract a uniform
+    threshold `ε_pos_min`/`ε_pos_mag` (resp. `ε_neg_min`/`ε_neg_mag`) for
+    sign and magnitude; intersect with `ε_ord` from `h_ordering`. The
+    resulting `ε_max := min(ε_pos_min, ε_neg_min, ε_pos_mag, ε_neg_mag,
+    ε_ord, 1)` is positive. `C_eps` is taken as the maximum of the
+    per-feature `C(r)` from `h_pos_mag` **and** `h_neg_mag` pooled over
+    `P ∪ N` (sum over a finite `Finset`, defaulting to `1` if empty). The
+    proof then case-splits on `ε < ε_max` and dispatches each conjunct
+    from the corresponding layer output.
 -/
 theorem signed_decomposition
     (dat : JEPAData d) (eb : SignedGenEigenbasis dat)
@@ -107,7 +127,7 @@ theorem signed_decomposition
     (P N : Finset (Fin d))
     (_hP : ∀ r ∈ P, 0 < (eb.pairs r).rho)
     (_hN : ∀ r ∈ N, (eb.pairs r).rho < 0)
-    (_hPN_disjoint : Disjoint P N)
+    (hPN_disjoint : Disjoint P N)
     (_hGap : ∀ s ∈ P, ∀ r ∈ N, |(eb.pairs r).rho| < (eb.pairs s).rho)
     -- Per-feature estimator (layer-level construction; see
     -- `SignedRecovery.signed_recovery_pos_magnitude_jepa`).
@@ -124,6 +144,15 @@ theorem signed_decomposition
         ∀ ε, 0 < ε → ε < ε_0 →
           |rho_hat r ε - (eb.pairs r).rho|
             ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε|)
+    -- (3) Negative-magnitude recovery rate — Layer 4.2(ii⁻), Fix 1.
+    -- `delta_mu r` is the μ̂-concentration radius for feature `r`
+    -- (sample-noise floor; see `SignedRecovery.
+    -- signed_recovery_neg_magnitude_jepa`), non-vanishing as ε → 0.
+    (delta_mu : Fin d → ℝ) (hδmu_nonneg : ∀ r ∈ N, 0 ≤ delta_mu r)
+    (h_neg_mag : ∀ r ∈ N, ∃ ε_0 C : ℝ, 0 < ε_0 ∧ 0 < C ∧
+        ∀ ε, 0 < ε → ε < ε_0 →
+          |rho_hat r ε - (eb.pairs r).rho|
+            ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C * delta_mu r)
     -- (4) Mixed-sign ordering — Layer 5.1.
     (tau_pos tau_neg : Fin d → ℝ → ℝ)
     (h_ordering : ∃ eps_max : ℝ, 0 < eps_max ∧
@@ -139,38 +168,55 @@ theorem signed_decomposition
         -- (2) Positive magnitude.
         (∀ r ∈ P, |rho_hat r ε - (eb.pairs r).rho|
             ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε|) ∧
-        -- (3) Negative obstruction: no magnitude bound claimed.
-        --     (Layer 4.2(iii); the statement omits any bound for r ∈ N.)
+        -- (3) Negative magnitude (Fix 1) — composed rate with the
+        --     sample-noise floor `C_eps · delta_mu r`.
+        (∀ r ∈ N, |rho_hat r ε - (eb.pairs r).rho|
+            ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_eps * delta_mu r) ∧
         -- (4) Ordering.
         (∀ s ∈ P, ∀ r ∈ N, tau_pos s ε < tau_neg r ε) := by
   classical
-  -- Step 1: pre-pick per-feature constants C(r) > 0 from `h_pos_mag` and
-  -- define a uniform C_eps as their sum + 1 (positive, dominates each).
+  -- Step 1: pre-pick per-feature constants C(r) > 0 from `h_pos_mag`
+  -- (for r ∈ P) and `h_neg_mag` (for r ∈ N), and define a uniform
+  -- C_eps as their pooled sum + 1 (positive, dominates each branch).
   let C_per : Fin d → ℝ :=
-    fun r => if hr : r ∈ P then (h_pos_mag r hr).choose_spec.choose else 0
+    fun r => if hr : r ∈ P then (h_pos_mag r hr).choose_spec.choose
+      else if hr' : r ∈ N then (h_neg_mag r hr').choose_spec.choose
+      else 0
   have hC_per_nonneg : ∀ r : Fin d, 0 ≤ C_per r := by
     intro r
     by_cases hr : r ∈ P
     · simp only [C_per, dif_pos hr]
       exact (h_pos_mag r hr).choose_spec.choose_spec.2.1.le
-    · simp [C_per, dif_neg hr]
-  have hC_per_dominates : ∀ r ∈ P, C_per r ≤ 1 + ∑ s ∈ P, C_per s := by
-    intro r hr
-    have h_sum_nn : 0 ≤ ∑ s ∈ P, C_per s := Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
-    have h_le : C_per r ≤ ∑ s ∈ P, C_per s := by
-      have : ({r} : Finset (Fin d)) ⊆ P := Finset.singleton_subset_iff.mpr hr
-      calc C_per r = ∑ s ∈ ({r} : Finset (Fin d)), C_per s := by simp
-        _ ≤ ∑ s ∈ P, C_per s := Finset.sum_le_sum_of_subset_of_nonneg this
-                                  (fun s _ _ => hC_per_nonneg s)
-    linarith
-  -- Step 2: uniform-(ε_max, C_eps) bound for positive magnitude.
-  -- Use the dominating constant `C_eps`, which weakens the per-r bound
+    · by_cases hr' : r ∈ N
+      · simp only [C_per, dif_neg hr, dif_pos hr']
+        exact (h_neg_mag r hr').choose_spec.choose_spec.2.1.le
+      · simp [C_per, dif_neg hr, dif_neg hr']
+  -- Step 2: uniform-(ε_max, C_eps) bound, pooled over P ∪ N.
+  -- Use the dominating constant `C_eps`, which weakens each per-r bound
   -- monotonically and lets a single `finset_forall_eps₂` reduction close
   -- the existential.
-  set C_eps : ℝ := 1 + ∑ r ∈ P, C_per r with hC_eps_def
+  set C_eps : ℝ := 1 + (∑ r ∈ P, C_per r) + (∑ r ∈ N, C_per r) with hC_eps_def
   have hC_eps_pos : 0 < C_eps := by
-    have : 0 ≤ ∑ r ∈ P, C_per r :=
-      Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
+    have h1 : 0 ≤ ∑ r ∈ P, C_per r := Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
+    have h2 : 0 ≤ ∑ r ∈ N, C_per r := Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
+    simp only [hC_eps_def]; linarith
+  have hC_per_dominates_P : ∀ r ∈ P, C_per r ≤ C_eps := by
+    intro r hr
+    have h_sum_nn_N : 0 ≤ ∑ s ∈ N, C_per s := Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
+    have h_le : C_per r ≤ ∑ s ∈ P, C_per s := by
+      have hsub : ({r} : Finset (Fin d)) ⊆ P := Finset.singleton_subset_iff.mpr hr
+      calc C_per r = ∑ s ∈ ({r} : Finset (Fin d)), C_per s := by simp
+        _ ≤ ∑ s ∈ P, C_per s := Finset.sum_le_sum_of_subset_of_nonneg hsub
+                                  (fun s _ _ => hC_per_nonneg s)
+    simp only [hC_eps_def]; linarith
+  have hC_per_dominates_N : ∀ r ∈ N, C_per r ≤ C_eps := by
+    intro r hr
+    have h_sum_nn_P : 0 ≤ ∑ s ∈ P, C_per s := Finset.sum_nonneg (fun s _ => hC_per_nonneg s)
+    have h_le : C_per r ≤ ∑ s ∈ N, C_per s := by
+      have hsub : ({r} : Finset (Fin d)) ⊆ N := Finset.singleton_subset_iff.mpr hr
+      calc C_per r = ∑ s ∈ ({r} : Finset (Fin d)), C_per s := by simp
+        _ ≤ ∑ s ∈ N, C_per s := Finset.sum_le_sum_of_subset_of_nonneg hsub
+                                  (fun s _ _ => hC_per_nonneg s)
     simp only [hC_eps_def]; linarith
   obtain ⟨ε_pos_mag, hε_pos_mag_pos, h_pos_mag_unif⟩ :
       ∃ ε_max : ℝ, 0 < ε_max ∧
@@ -193,7 +239,7 @@ theorem signed_decomposition
             have hC_r_eq : (h_pos_mag r hr).choose_spec.choose = C_per r := by
               simp [C_per, dif_pos hr]
             rw [hC_r_eq] at hC_r_bound
-            have hC_r_le : C_per r ≤ C_eps := hC_per_dominates r hr
+            have hC_r_le : C_per r ≤ C_eps := hC_per_dominates_P r hr
             have h_rpow_nn : 0 ≤ ε ^ ((1 : ℝ) / L) := Real.rpow_nonneg hε_pos.le _
             have h_log_nn : 0 ≤ |Real.log ε| := abs_nonneg _
             have h_factor_nn : 0 ≤ ε ^ ((1 : ℝ) / L) * |Real.log ε| :=
@@ -204,6 +250,40 @@ theorem signed_decomposition
               _ ≤ C_eps * (ε ^ ((1 : ℝ) / L) * |Real.log ε|) :=
                   mul_le_mul_of_nonneg_right hC_r_le h_factor_nn
               _ = C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by ring)
+    refine ⟨εm, hεm_pos, fun ε hε₁ hε₂ r hr => hεm ε hε₁ hε₂ r hr 0 (by simp)⟩
+  -- Step 2′: uniform-(ε_max, C_eps) bound for negative magnitude (Fix 1).
+  obtain ⟨ε_neg_mag, hε_neg_mag_pos, h_neg_mag_unif⟩ :
+      ∃ ε_max : ℝ, 0 < ε_max ∧
+        ∀ ε, 0 < ε → ε < ε_max → ∀ r ∈ N,
+          |rho_hat r ε - (eb.pairs r).rho|
+            ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_eps * delta_mu r := by
+    obtain ⟨εm, hεm_pos, hεm⟩ :=
+      finset_forall_eps₂ N ({(0 : ℕ)} : Finset ℕ)
+        (fun r _ ε =>
+          |rho_hat r ε - (eb.pairs r).rho|
+            ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_eps * delta_mu r)
+        (fun r hr _ _ => by
+          have hrnP : r ∉ P := fun hrP => absurd hr (Finset.disjoint_left.mp hPN_disjoint hrP)
+          refine ⟨(h_neg_mag r hr).choose, ?_, ?_⟩
+          · exact (h_neg_mag r hr).choose_spec.choose_spec.1
+          · intro ε hε_pos hε_lt
+            have hC_r_bound :=
+              (h_neg_mag r hr).choose_spec.choose_spec.2.2 ε hε_pos hε_lt
+            have hC_r_eq : (h_neg_mag r hr).choose_spec.choose = C_per r := by
+              simp only [C_per, dif_neg hrnP, dif_pos hr]
+            rw [hC_r_eq] at hC_r_bound
+            have hC_r_le : C_per r ≤ C_eps := hC_per_dominates_N r hr
+            have h_rpow_nn : 0 ≤ ε ^ ((1 : ℝ) / L) := Real.rpow_nonneg hε_pos.le _
+            have h_log_nn : 0 ≤ |Real.log ε| := abs_nonneg _
+            have h_factor_nn : 0 ≤ ε ^ ((1 : ℝ) / L) * |Real.log ε| :=
+              mul_nonneg h_rpow_nn h_log_nn
+            have hδ_nn : 0 ≤ delta_mu r := hδmu_nonneg r hr
+            calc |rho_hat r ε - (eb.pairs r).rho|
+                ≤ C_per r * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_per r * delta_mu r := hC_r_bound
+              _ ≤ C_eps * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C_eps * delta_mu r := by
+                  have h1 := mul_le_mul_of_nonneg_right hC_r_le h_factor_nn
+                  have h2 := mul_le_mul_of_nonneg_right hC_r_le hδ_nn
+                  nlinarith [h1, h2])
     refine ⟨εm, hεm_pos, fun ε hε₁ hε₂ r hr => hεm ε hε₁ hε₂ r hr 0 (by simp)⟩
   -- Step 3: uniform threshold for sign-positivity.
   obtain ⟨ε_sign_pos, hε_sign_pos_pos, h_sign_pos_unif⟩ :
@@ -225,31 +305,34 @@ theorem signed_decomposition
     refine ⟨εm, hεm_pos, fun ε hε₁ hε₂ r hr => hεm ε hε₁ hε₂ r hr 0 (by simp)⟩
   -- Step 5: extract ordering threshold.
   obtain ⟨ε_ord, hε_ord_pos, h_ord_unif⟩ := h_ordering
-  -- Step 6: assemble. ε_max := min(everything, 1).
-  refine ⟨min (min (min ε_sign_pos ε_sign_neg) (min ε_pos_mag ε_ord)) 1,
+  -- Step 6: assemble. ε_max := min(everything, 1), now over six leaves
+  -- (sign-pos, sign-neg, pos-mag, neg-mag, ordering, 1).
+  refine ⟨min (min (min ε_sign_pos ε_sign_neg) (min ε_pos_mag ε_neg_mag))
+              (min ε_ord 1),
           C_eps,
           lt_min (lt_min (lt_min hε_sign_pos_pos hε_sign_neg_pos)
-                          (lt_min hε_pos_mag_pos hε_ord_pos))
-                  zero_lt_one,
+                          (lt_min hε_pos_mag_pos hε_neg_mag_pos))
+                  (lt_min hε_ord_pos zero_lt_one),
           hC_eps_pos, ?_⟩
   intro ε hε_pos hε_lt
+  have hεA : ε < min (min ε_sign_pos ε_sign_neg) (min ε_pos_mag ε_neg_mag) :=
+    lt_of_lt_of_le hε_lt (min_le_left _ _)
+  have hεB : ε < min ε_ord 1 := lt_of_lt_of_le hε_lt (min_le_right _ _)
   have hε_lt_sign_pos : ε < ε_sign_pos :=
-    lt_of_lt_of_le hε_lt
-      (le_trans (min_le_left _ 1) (le_trans (min_le_left _ _) (min_le_left _ _)))
+    lt_of_lt_of_le (lt_of_lt_of_le hεA (min_le_left _ _)) (min_le_left _ _)
   have hε_lt_sign_neg : ε < ε_sign_neg :=
-    lt_of_lt_of_le hε_lt
-      (le_trans (min_le_left _ 1) (le_trans (min_le_left _ _) (min_le_right _ _)))
+    lt_of_lt_of_le (lt_of_lt_of_le hεA (min_le_left _ _)) (min_le_right _ _)
   have hε_lt_pos_mag : ε < ε_pos_mag :=
-    lt_of_lt_of_le hε_lt
-      (le_trans (min_le_left _ 1) (le_trans (min_le_right _ _) (min_le_left _ _)))
-  have hε_lt_ord : ε < ε_ord :=
-    lt_of_lt_of_le hε_lt
-      (le_trans (min_le_left _ 1) (le_trans (min_le_right _ _) (min_le_right _ _)))
-  have hε_lt_one : ε < 1 := lt_of_lt_of_le hε_lt (min_le_right _ _)
+    lt_of_lt_of_le (lt_of_lt_of_le hεA (min_le_right _ _)) (min_le_left _ _)
+  have hε_lt_neg_mag : ε < ε_neg_mag :=
+    lt_of_lt_of_le (lt_of_lt_of_le hεA (min_le_right _ _)) (min_le_right _ _)
+  have hε_lt_ord : ε < ε_ord := lt_of_lt_of_le hεB (min_le_left _ _)
+  have hε_lt_one : ε < 1 := lt_of_lt_of_le hεB (min_le_right _ _)
   exact ⟨h_sign_pos_unif ε hε_pos hε_lt_sign_pos,
          h_sign_neg_unif ε hε_pos hε_lt_sign_neg,
          fun r hrho_zero => h_sign_zero r hrho_zero ε hε_pos hε_lt_one,
          h_pos_mag_unif ε hε_pos hε_lt_pos_mag,
+         h_neg_mag_unif ε hε_pos hε_lt_neg_mag,
          h_ord_unif ε hε_pos hε_lt_ord⟩
 
 /-! ## Paper-2 headline — plateau-path positive-branch recovery

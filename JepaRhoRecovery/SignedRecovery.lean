@@ -707,4 +707,165 @@ theorem signed_recovery_neg_lambda_rate
   signed_recovery_neg_lambda_rate_core L hL lambda mu hlambda_neg hmu_pos
     sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
 
+/-! ## §4.2(ii)-neg — Negative-magnitude recovery via λ̂-rate + μ̂-concentration
+    (Fix 1, composes with `Main.signed_decomposition`'s `h_neg_mag`)
+
+    `signed_recovery_neg_lambda_rate` above obstructs *sign-only* recovery
+    from the trajectory (§4.2(iii)): the trajectory alone cannot pin down
+    `μ_r`, only `λ_r = ρ_r*·μ_r`. But composing the trajectory-derived
+    `λ̂`-rate with an **ordinary sample-covariance concentration bound on
+    μ̂** (not re-derived here — μ̂ := v̂ᵀ Σ̂ˣˣ v̂ is a quadratic form in the
+    sample covariance, so any standard concentration bound on Σ̂ˣˣ transfers
+    to μ̂; taken as the hypothesis `h_mu_conc` below, exactly as `h_pos_mag`
+    in `Main.lean` takes its constant as a hypothesis rather than
+    re-deriving it) recovers the *magnitude* `|ρ_r*|` via the delta method
+    `ρ̂ := λ̂/μ̂`.
+
+    This is genuinely a *composition* of two already-proved/hypothesised
+    pieces — no new mathematical content, only the triangle-inequality
+    algebra of error propagation through division. -/
+
+/-- **Theorem 4.2(ii⁻) (Negative-magnitude recovery, λ̂-rate + μ̂-concentration
+    composition).**
+
+    For `ρ_r* = λ/μ < 0` (λ < 0, μ > 0), given:
+      * the trajectory-derived `λ̂`-rate (`signed_recovery_neg_lambda_rate`,
+        sorry-free);
+      * a point estimate `mu_hat` of `μ` with concentration radius
+        `delta_mu` (`h_mu_conc`, an ordinary sample-covariance concentration
+        bound — stated as a hypothesis, the same way `h_pos_mag` is a
+        hypothesis rather than re-derived), together with `delta_mu < μ/2`
+        so `mu_hat` is bounded away from 0;
+
+    the delta-method estimator `ρ̂(ε) := λ̂(ε) / mu_hat` satisfies
+        |ρ̂(ε) − λ/μ| ≤ C·ε^{1/L}·|log ε| + C·delta_mu
+    for ε small enough, where the additive `C·delta_mu` term is the
+    irreducible sample-noise floor (it does not vanish as ε → 0; this is
+    the expected two-term finite-sample shape, matching
+    `FiniteSample.finite_sample_rate_pos`'s `C_eps · (…) + C_n · delta_n`).
+
+    **Proof.** Triangle inequality / delta method:
+        ρ̂ − λ/μ = (λ̂ − λ)/mu_hat − λ·(mu_hat − μ)/(mu_hat·μ),
+    so
+        |ρ̂ − λ/μ| ≤ |λ̂−λ|/mu_hat + |λ|·|mu_hat−μ|/(mu_hat·μ).
+    Since `mu_hat > μ/2 > 0` (from `delta_mu < μ/2` and `h_mu_conc`),
+    `1/mu_hat ≤ 2/μ`, giving
+        |ρ̂ − λ/μ| ≤ (2/μ)·K_neg·ε^{1/L}|log ε| + (2|λ|/μ²)·delta_mu
+    which is dominated by `C := 2·K_neg/μ + 2·|λ|/μ²` times each term. -/
+theorem signed_recovery_neg_magnitude_jepa
+    (L : ℕ) (hL : 2 ≤ L)
+    (lambda mu : ℝ) (hlambda_neg : lambda < 0) (hmu_pos : 0 < mu)
+    (sigma : ℝ → ℝ → ℝ)
+    (hSigma_pos : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 ≤ t → 0 < sigma ε t)
+    (hSigma_cont : ∀ ε : ℝ, 0 < ε → ε < 1 → Continuous (sigma ε))
+    (hSigma_ode : ∀ ε : ℝ, 0 < ε → ε < 1 → ∀ t : ℝ, 0 < t →
+      HasDerivAt (sigma ε)
+        (lambda * Real.rpow (sigma ε t) (3 - 1 / (L : ℝ))
+          - mu * (sigma ε t) ^ 3) t)
+    (hSigma_init : ∀ ε : ℝ, 0 < ε → ε < 1 → sigma ε 0 = ε)
+    -- Sample-covariance concentration bound on μ̂ (ordinary concentration;
+    -- stated as a hypothesis rather than re-derived — see file header).
+    (mu_hat : ℝ) (delta_mu : ℝ) (hδmu_nonneg : 0 ≤ delta_mu)
+    (hδmu_small : delta_mu < mu / 2)
+    (h_mu_conc : |mu_hat - mu| ≤ delta_mu) :
+    ∃ (rho_hat : ℝ → ℝ) (eps_0 C : ℝ), 0 < eps_0 ∧ eps_0 < 1 ∧ 0 < C ∧
+      ∀ ε : ℝ, 0 < ε → ε < eps_0 →
+        |rho_hat ε - lambda / mu|
+          ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C * delta_mu := by
+  -- Step 1: trajectory-derived λ̂-rate.
+  obtain ⟨T, K_neg, eps_0, heps0_pos, heps0_lt1, hK_neg_pos, hT_pos, h_rate⟩ :=
+    signed_recovery_neg_lambda_rate L hL lambda mu hlambda_neg hmu_pos
+      sigma hSigma_pos hSigma_cont hSigma_ode hSigma_init
+  -- `mu_hat` is bounded away from zero.
+  have hmu_hat_lb : mu / 2 < mu_hat := by
+    have h1 := (abs_le.mp h_mu_conc).1
+    linarith
+  have hmu_hat_pos : 0 < mu_hat := by linarith
+  have hmu_hat_inv_le : (mu_hat)⁻¹ ≤ 2 / mu := by
+    have h2 : (1 : ℝ) / mu_hat ≤ 1 / (mu / 2) :=
+      one_div_le_one_div_of_le (by positivity) hmu_hat_lb.le
+    have h3 : (1 : ℝ) / (mu / 2) = 2 / mu := by field_simp [hmu_pos.ne']
+    rwa [one_div, h3] at h2
+  -- Step 2: assemble the estimator ρ̂(ε) := (−est(ε)) / mu_hat, where
+  -- `est` is the raw |λ|-estimator from `signed_recovery_neg_lambda_rate`.
+  set est : ℝ → ℝ := fun ε =>
+    ((L : ℝ) / (2 * (L : ℝ) - 1))
+      * Real.rpow (sigma ε (T ε)) (-(2 * (L : ℝ) - 1) / L) / T ε with hest_def
+  set C : ℝ := 2 * K_neg / mu + 2 * |lambda| / mu ^ 2 with hC_def
+  have hC_pos : 0 < C := by
+    have h1 : 0 < 2 * K_neg / mu := by positivity
+    have h2 : 0 ≤ 2 * |lambda| / mu ^ 2 := by positivity
+    simp only [hC_def]; linarith
+  refine ⟨fun ε => (-(est ε)) / mu_hat, eps_0, C, heps0_pos, heps0_lt1, hC_pos, ?_⟩
+  intro ε hε_pos hε_lt
+  have h_lam_bound : |(-(est ε)) - lambda| ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    have h := h_rate ε hε_pos hε_lt
+    have heq : (-(est ε)) - lambda = -(est ε - (-lambda)) := by ring
+    rw [heq, abs_neg]
+    exact h
+  -- Delta-method algebra: ρ̂ - λ/μ = (λ̂-λ)/mu_hat - λ(mu_hat-μ)/(mu_hat·μ).
+  have halg : (-(est ε)) / mu_hat - lambda / mu
+      = ((-(est ε)) - lambda) / mu_hat - lambda * (mu_hat - mu) / (mu_hat * mu) := by
+    field_simp [hmu_hat_pos.ne', hmu_pos.ne']
+    ring
+  rw [halg]
+  have htri : |((-(est ε)) - lambda) / mu_hat - lambda * (mu_hat - mu) / (mu_hat * mu)|
+      ≤ |((-(est ε)) - lambda) / mu_hat| + |lambda * (mu_hat - mu) / (mu_hat * mu)| := by
+    calc |((-(est ε)) - lambda) / mu_hat - lambda * (mu_hat - mu) / (mu_hat * mu)|
+        = |((-(est ε)) - lambda) / mu_hat + (-(lambda * (mu_hat - mu) / (mu_hat * mu)))| := by
+          rw [sub_eq_add_neg]
+      _ ≤ |((-(est ε)) - lambda) / mu_hat| + |(-(lambda * (mu_hat - mu) / (mu_hat * mu)))| :=
+          abs_add_le _ _
+      _ = |((-(est ε)) - lambda) / mu_hat| + |lambda * (mu_hat - mu) / (mu_hat * mu)| := by
+          rw [abs_neg]
+  have hterm1 : |((-(est ε)) - lambda) / mu_hat| ≤ (2 / mu) * K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by
+    rw [abs_div, abs_of_pos hmu_hat_pos]
+    have hfactor_nn : 0 ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by positivity
+    calc |(-(est ε)) - lambda| / mu_hat
+        ≤ (K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε|) / mu_hat :=
+          div_le_div_of_nonneg_right h_lam_bound hmu_hat_pos.le
+      _ = K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| * (mu_hat)⁻¹ := by rw [div_eq_mul_inv]
+      _ ≤ K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| * (2 / mu) :=
+          mul_le_mul_of_nonneg_left hmu_hat_inv_le hfactor_nn
+      _ = (2 / mu) * K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| := by ring
+  have hden_lb : mu ^ 2 / 2 ≤ mu_hat * mu := by
+    nlinarith [mul_lt_mul_of_pos_right hmu_hat_lb hmu_pos]
+  have hinv_den : (mu_hat * mu)⁻¹ ≤ 2 / mu ^ 2 := by
+    have hpos2 : (0 : ℝ) < mu ^ 2 / 2 := by
+      have := pow_pos hmu_pos 2
+      linarith
+    have h2 : (1 : ℝ) / (mu_hat * mu) ≤ 1 / (mu ^ 2 / 2) :=
+      one_div_le_one_div_of_le hpos2 hden_lb
+    have h3 : (1 : ℝ) / (mu ^ 2 / 2) = 2 / mu ^ 2 := by field_simp [hmu_pos.ne']
+    rwa [one_div, h3] at h2
+  have hterm2 : |lambda * (mu_hat - mu) / (mu_hat * mu)| ≤ (2 * |lambda| / mu ^ 2) * delta_mu := by
+    rw [abs_div, abs_mul, abs_of_pos (mul_pos hmu_hat_pos hmu_pos)]
+    have h_num_le : |lambda| * |mu_hat - mu| ≤ |lambda| * delta_mu :=
+      mul_le_mul_of_nonneg_left h_mu_conc (abs_nonneg _)
+    have hfactor2_nn : 0 ≤ |lambda| * delta_mu := by positivity
+    calc |lambda| * |mu_hat - mu| / (mu_hat * mu)
+        ≤ (|lambda| * delta_mu) / (mu_hat * mu) :=
+          div_le_div_of_nonneg_right h_num_le (mul_pos hmu_hat_pos hmu_pos).le
+      _ = |lambda| * delta_mu * (mu_hat * mu)⁻¹ := by rw [div_eq_mul_inv]
+      _ ≤ |lambda| * delta_mu * (2 / mu ^ 2) :=
+          mul_le_mul_of_nonneg_left hinv_den hfactor2_nn
+      _ = (2 * |lambda| / mu ^ 2) * delta_mu := by ring
+  calc |((-(est ε)) - lambda) / mu_hat - lambda * (mu_hat - mu) / (mu_hat * mu)|
+      ≤ |((-(est ε)) - lambda) / mu_hat| + |lambda * (mu_hat - mu) / (mu_hat * mu)| := htri
+    _ ≤ (2 / mu) * K_neg * ε ^ ((1 : ℝ) / L) * |Real.log ε| + (2 * |lambda| / mu ^ 2) * delta_mu :=
+        add_le_add hterm1 hterm2
+    _ ≤ C * ε ^ ((1 : ℝ) / L) * |Real.log ε| + C * delta_mu := by
+        have h1 : (2 / mu) * K_neg ≤ C := by
+          simp only [hC_def]
+          have hnn : 0 ≤ 2 * |lambda| / mu ^ 2 := by positivity
+          have heqc : (2 / mu) * K_neg = 2 * K_neg / mu := by ring
+          linarith
+        have h2 : (2 * |lambda| / mu ^ 2) ≤ C := by
+          simp only [hC_def]
+          have hpos2 : 0 < 2 * K_neg / mu := by positivity
+          linarith
+        have hrpowlog_nn : 0 ≤ ε ^ ((1 : ℝ) / L) * |Real.log ε| := by positivity
+        nlinarith [mul_le_mul_of_nonneg_right h1 hrpowlog_nn,
+          mul_le_mul_of_nonneg_right h2 hδmu_nonneg]
+
 end JepaRhoRecovery
